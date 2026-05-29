@@ -5,3 +5,4 @@ export { StatCard } from "./StatCard";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { PageTransition } from "./PageTransition";
 export { DataTable } from "./DataTable";
+export { PageSkeleton } from "./PageSkeleton";
