@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -12,12 +12,13 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ErrorModal } from "@/components/shared/ErrorModal";
 import { CloudinaryUpload } from "@/components/shared/CloudinaryUpload";
+import { CategorySelect } from "@/components/shared/CategorySelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRole } from "@/components/providers/RoleProvider";
-import { cn } from "@/lib/utils";
 import type { IProduct } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ const productSchema = z.object({
   lowStockThreshold: z.preprocess((v) => parseInt(String(v), 10), z.number().int("Must be a whole number").min(0, "Must be ≥ 0")),
   supplierId: z.string().optional(),
 });
+
 type ProductFormValues = z.infer<typeof productSchema>;
 
 // ─── ProductSheet ─────────────────────────────────────────────────────────────
@@ -45,9 +47,11 @@ interface ProductSheetProps {
   onClose: () => void;
   editProduct: ProductRow | null;
   onSuccess: () => void;
+  categories: string[];
+  onAddCategory: (name: string) => void;
 }
 
-function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetProps) {
+function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAddCategory }: ProductSheetProps) {
   const isEdit = editProduct !== null;
   const [imageUrl, setImageUrl] = useState<string>(editProduct?.imageUrl ?? "");
 
@@ -55,39 +59,21 @@ function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetPro
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema) as import("react-hook-form").Resolver<ProductFormValues>,
     defaultValues: isEdit
-      ? {
-          name: editProduct.name,
-          sku: editProduct.sku,
-          category: editProduct.category ?? "",
-          description: editProduct.description ?? "",
-          price: editProduct.price,
-          quantity: editProduct.quantity,
-          lowStockThreshold: editProduct.lowStockThreshold,
-          supplierId: editProduct.supplierId ? String(editProduct.supplierId) : "",
-        }
+      ? { name: editProduct.name, sku: editProduct.sku, category: editProduct.category ?? "", description: editProduct.description ?? "", price: editProduct.price, quantity: editProduct.quantity, lowStockThreshold: editProduct.lowStockThreshold, supplierId: editProduct.supplierId ? String(editProduct.supplierId) : "" }
       : { name: "", sku: "", category: "", description: "", price: 0, quantity: 0, lowStockThreshold: 10, supplierId: "" },
   });
 
   useEffect(() => {
     if (open) {
       setImageUrl(editProduct?.imageUrl ?? "");
-      reset(
-        isEdit
-          ? {
-              name: editProduct.name,
-              sku: editProduct.sku,
-              category: editProduct.category ?? "",
-              description: editProduct.description ?? "",
-              price: editProduct.price,
-              quantity: editProduct.quantity,
-              lowStockThreshold: editProduct.lowStockThreshold,
-              supplierId: editProduct.supplierId ? String(editProduct.supplierId) : "",
-            }
-          : { name: "", sku: "", category: "", description: "", price: 0, quantity: 0, lowStockThreshold: 10, supplierId: "" }
+      reset(isEdit
+        ? { name: editProduct.name, sku: editProduct.sku, category: editProduct.category ?? "", description: editProduct.description ?? "", price: editProduct.price, quantity: editProduct.quantity, lowStockThreshold: editProduct.lowStockThreshold, supplierId: editProduct.supplierId ? String(editProduct.supplierId) : "" }
+        : { name: "", sku: "", category: "", description: "", price: 0, quantity: 0, lowStockThreshold: 10, supplierId: "" }
       );
     }
   }, [open, isEdit, editProduct, reset]);
@@ -115,11 +101,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetPro
       if (data.supplierId) body.supplierId = data.supplierId;
       if (imageUrl) body.imageUrl = imageUrl;
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json();
       if (!res.ok) { toast.error(json.error ?? "Something went wrong"); return; }
       toast.success(isEdit ? "Product updated" : "Product created");
@@ -135,10 +117,8 @@ function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetPro
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" aria-hidden="true" onClick={onClose} />
-      <aside
-        role="dialog" aria-modal="true" aria-label={isEdit ? "Edit product" : "New product"}
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-popover shadow-2xl border-l border-border"
-      >
+      <aside role="dialog" aria-modal="true" aria-label={isEdit ? "Edit product" : "New product"}
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-popover shadow-2xl border-l border-border">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-base font-semibold text-foreground">{isEdit ? "Edit Product" : "New Product"}</h2>
           <button type="button" onClick={onClose} className="inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Close panel">
@@ -161,13 +141,25 @@ function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetPro
             {errors.sku && <p className="text-xs text-destructive">{errors.sku.message}</p>}
           </div>
 
-          {/* Category */}
+          {/* Category — dropdown with add new */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="p-category">Category</Label>
-            <Input id="p-category" type="text" placeholder="e.g. Electronics" {...register("category")} />
+            <Controller
+              name="category"
+              control={control}
+              render={({ field }) => (
+                <CategorySelect
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  categories={categories}
+                  onAddCategory={onAddCategory}
+                  placeholder="Select or add category"
+                />
+              )}
+            />
           </div>
 
-          {/* Price & Quantity row */}
+          {/* Price & Quantity */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="p-price">Price <span className="text-destructive" aria-hidden="true">*</span></Label>
@@ -190,26 +182,16 @@ function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetPro
           {/* Description */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="p-desc">Description</Label>
-            <textarea
-              id="p-desc"
-              rows={3}
-              placeholder="Optional description"
+            <textarea id="p-desc" rows={3} placeholder="Optional description"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-              {...register("description")}
-            />
+              {...register("description")} />
           </div>
 
           {/* Product image */}
           <div className="flex flex-col gap-1.5">
             <Label>Product Image</Label>
-            <CloudinaryUpload
-              value={imageUrl || null}
-              onChange={setImageUrl}
-              onClear={() => setImageUrl("")}
-              label="Upload product image"
-              folder="inventory/products"
-              aspectRatio="aspect-video"
-            />
+            <CloudinaryUpload value={imageUrl || null} onChange={setImageUrl} onClear={() => setImageUrl("")}
+              label="Upload product image" folder="inventory/products" aspectRatio="aspect-video" />
           </div>
 
           <div className="flex-1" />
@@ -233,21 +215,36 @@ export default function ProductsPage() {
   const isAdmin = role === "admin";
 
   const [products, setProducts] = useState<ProductRow[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<ProductRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductRow | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      const res = await fetch("/api/products", { cache: "no-store" });
-      if (!res.ok) { toast.error("Failed to load products"); return; }
-      const json = await res.json();
-      setProducts((json.products as ProductRow[]).map((p) => ({ ...p, _id: String(p._id) })));
+      const [prodRes, catRes] = await Promise.all([
+        fetch("/api/products", { cache: "no-store" }),
+        fetch("/api/categories"),
+      ]);
+      if (!prodRes.ok) {
+        const json = await prodRes.json().catch(() => ({}));
+        setFetchError(json.error ?? "Failed to load products");
+        return;
+      }
+      const prodJson = await prodRes.json();
+      setProducts((prodJson.products as ProductRow[]).map((p) => ({ ...p, _id: String(p._id) })));
+      if (catRes.ok) {
+        const catJson = await catRes.json();
+        setCategories(catJson.categories as string[]);
+      }
     } catch {
-      toast.error("Network error — could not load products");
+      setFetchError("Network error — could not load products. Check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -255,22 +252,33 @@ export default function ProductsPage() {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
+  function handleAddCategory(name: string) {
+    setCategories((prev) => [...new Set([...prev, name])].sort());
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/products/${deleteTarget._id}`, { method: "DELETE" });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to delete product"); return; }
+      if (!res.ok) {
+        // Critical error — show modal instead of toast
+        setDeleteError(json.error ?? "Failed to delete product");
+        return;
+      }
       toast.success("Product deleted");
       setDeleteTarget(null);
       await fetchProducts();
     } catch {
-      toast.error("Network error — please try again");
+      setDeleteError("Network error — could not delete product. Please try again.");
     } finally {
       setIsDeleting(false);
     }
   }
+
+  // All product names for fuzzy search suggestions
+  const productNames = products.map((p) => p.name);
 
   const columns: ColumnDef<ProductRow>[] = [
     {
@@ -305,23 +313,25 @@ export default function ProductsPage() {
     {
       accessorKey: "category",
       header: "Category",
-      cell: ({ row }) => <span className="text-muted-foreground">{row.original.category ?? "—"}</span>,
-    },
-    {
-      accessorKey: "price",
-      header: "Unit Price",
       cell: ({ row }) => (
-        <span className="font-mono text-sm tabular-nums">
-          ${row.original.price.toFixed(2)}
+        <span className="text-muted-foreground">
+          {row.original.category ? (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+              {row.original.category}
+            </span>
+          ) : "—"}
         </span>
       ),
     },
     {
+      accessorKey: "price",
+      header: "Unit Price",
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">${row.original.price.toFixed(2)}</span>,
+    },
+    {
       accessorKey: "quantity",
       header: "Stock",
-      cell: ({ row }) => (
-        <span className="font-mono text-sm tabular-nums">{row.original.quantity}</span>
-      ),
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.quantity}</span>,
     },
     {
       id: "stockStatus",
@@ -339,29 +349,25 @@ export default function ProductsPage() {
         return <StatusBadge status="active" />;
       },
     },
-    ...(isAdmin
-      ? ([
-          {
-            id: "actions",
-            header: "",
-            enableSorting: false,
-            enableHiding: false,
-            cell: ({ row }) => {
-              const p = row.original;
-              return (
-                <div className="flex items-center justify-end gap-1.5">
-                  <Button variant="ghost" size="icon-sm" onClick={() => { setEditProduct(p); setSheetOpen(true); }} aria-label={`Edit ${p.name}`}>
-                    <Pencil className="size-3.5" aria-hidden="true" />
-                  </Button>
-                  <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(p)} aria-label={`Delete ${p.name}`} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                  </Button>
-                </div>
-              );
-            },
-          },
-        ] as ColumnDef<ProductRow>[])
-      : []),
+    ...(isAdmin ? ([{
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => {
+        const p = row.original;
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            <Button variant="ghost" size="icon-sm" onClick={() => { setEditProduct(p); setSheetOpen(true); }} aria-label={`Edit ${p.name}`}>
+              <Pencil className="size-3.5" aria-hidden="true" />
+            </Button>
+            <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(p)} aria-label={`Delete ${p.name}`} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+              <Trash2 className="size-3.5" aria-hidden="true" />
+            </Button>
+          </div>
+        );
+      },
+    }] as ColumnDef<ProductRow>[]) : []),
   ];
 
   return (
@@ -369,20 +375,35 @@ export default function ProductsPage() {
       <PageHeader
         title="Products"
         description="Manage your product catalog."
-        action={
-          isAdmin ? (
-            <Button onClick={() => { setEditProduct(null); setSheetOpen(true); }}>
-              <Plus className="size-4" aria-hidden="true" />
-              New Product
-            </Button>
-          ) : undefined
-        }
+        action={isAdmin ? (
+          <Button onClick={() => { setEditProduct(null); setSheetOpen(true); }}>
+            <Plus className="size-4" aria-hidden="true" />
+            New Product
+          </Button>
+        ) : undefined}
       />
 
-      <DataTable columns={columns} data={products} isLoading={isLoading} searchKey="name" searchPlaceholder="Search by name…" />
+      <DataTable
+        columns={columns}
+        data={products}
+        isLoading={isLoading}
+        error={fetchError}
+        searchKey="name"
+        searchPlaceholder="Search by name…"
+        emptyTitle="No products yet"
+        emptyDescription={isAdmin ? "Add your first product using the button above." : "No products have been added to the catalog yet."}
+        fuzzyValues={productNames}
+      />
 
       {isAdmin && (
-        <ProductSheet open={sheetOpen} onClose={() => setSheetOpen(false)} editProduct={editProduct} onSuccess={fetchProducts} />
+        <ProductSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          editProduct={editProduct}
+          onSuccess={fetchProducts}
+          categories={categories}
+          onAddCategory={handleAddCategory}
+        />
       )}
 
       {isAdmin && deleteTarget && (
@@ -397,6 +418,16 @@ export default function ProductsPage() {
           isLoading={isDeleting}
         />
       )}
+
+      {/* Critical error modal for delete failures */}
+      <ErrorModal
+        open={!!deleteError}
+        onClose={() => setDeleteError(null)}
+        title="Could not delete product"
+        message={deleteError ?? ""}
+        actionLabel="Try again"
+        onAction={handleDelete}
+      />
     </>
   );
 }

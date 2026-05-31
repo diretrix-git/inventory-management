@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { PasswordInput } from "@/components/shared/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -225,9 +226,8 @@ function UserSheet({ open, onClose, editUser, onSuccess }: UserSheetProps) {
                 </span>
               )}
             </Label>
-            <Input
+            <PasswordInput
               id="user-password"
-              type="password"
               placeholder={isEdit ? "••••••••" : "Min. 8 characters"}
               aria-invalid={!!errors.password}
               {...register("password")}

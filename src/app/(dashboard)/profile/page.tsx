@@ -10,6 +10,7 @@ import { useState } from "react";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { CloudinaryUpload } from "@/components/shared/CloudinaryUpload";
+import { PasswordInput } from "@/components/shared/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -210,11 +211,10 @@ function ChangePasswordForm() {
         {/* Current password */}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="current-password">Current password</Label>
-          <Input
+          <PasswordInput
             id="current-password"
-            type="password"
-            placeholder="••••••••"
             autoComplete="current-password"
+            placeholder="••••••••"
             aria-invalid={!!errors.currentPassword}
             {...register("currentPassword")}
           />
@@ -226,11 +226,10 @@ function ChangePasswordForm() {
         {/* New password */}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-password">New password</Label>
-          <Input
+          <PasswordInput
             id="new-password"
-            type="password"
-            placeholder="Min. 8 characters"
             autoComplete="new-password"
+            placeholder="Min. 8 characters"
             aria-invalid={!!errors.newPassword}
             {...register("newPassword")}
           />
@@ -242,11 +241,10 @@ function ChangePasswordForm() {
         {/* Confirm new password */}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="confirm-new-password">Confirm new password</Label>
-          <Input
+          <PasswordInput
             id="confirm-new-password"
-            type="password"
-            placeholder="Repeat new password"
             autoComplete="new-password"
+            placeholder="Repeat new password"
             aria-invalid={!!errors.confirmNewPassword}
             {...register("confirmNewPassword")}
           />

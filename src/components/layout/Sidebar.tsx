@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -181,9 +181,24 @@ function MobileDrawer({
   open: boolean;
   onClose: () => void;
 }) {
-  // Close on route change
   const pathname = usePathname();
-  useEffect(() => { onClose(); }, [pathname, onClose]);
+  // Track if drawer has been opened at least once before closing on route change
+  // This prevents the initial mount from triggering onClose
+  const hasOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (open) {
+      hasOpenedRef.current = true;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    // Only close on route change if the drawer was previously opened
+    if (hasOpenedRef.current) {
+      onClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   // Close on Escape
   useEffect(() => {
