@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,59 +22,87 @@ export function ViewModal({
   footer,
   maxWidth = "max-w-lg",
 }: ViewModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  // Sync open state with native <dialog>
+  // Close on Escape
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open) {
-      if (!dialog.open) dialog.showModal();
-    } else {
-      if (dialog.open) dialog.close();
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
     }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  // Escape key is handled natively by <dialog> — onClose fires via onClose handler
-  if (!open) return null;
-
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={onClose}
-      className={cn(
-        "fixed inset-0 z-50 m-auto w-[calc(100%-2rem)] rounded-xl border border-border bg-popover p-0 shadow-2xl",
-        "backdrop:bg-black/60 backdrop:backdrop-blur-sm",
-        "open:flex open:flex-col",
-        maxWidth
-      )}
-      aria-labelledby="view-modal-title"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-5 py-4 flex-shrink-0">
-        <h2 id="view-modal-title" className="text-base font-semibold text-foreground">
-          {title}
-        </h2>
-        <button
-          onClick={onClose}
-          className="inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          aria-label="Close (Esc)"
-        >
-          <X className="size-4" aria-hidden="true" />
-        </button>
-      </div>
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            aria-hidden="true"
+            onClick={onClose}
+          />
 
-      {/* Body */}
-      <div className="overflow-y-auto flex-1 p-5">
-        {children}
-      </div>
+          {/* Modal panel */}
+          <motion.div
+            key="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="view-modal-title"
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={cn(
+              "fixed inset-0 z-50 m-auto h-fit w-[calc(100%-2rem)] rounded-xl",
+              "border border-border bg-popover shadow-2xl",
+              "flex flex-col max-h-[90vh]",
+              maxWidth
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border px-5 py-4 flex-shrink-0">
+              <h2 id="view-modal-title" className="text-base font-semibold text-foreground">
+                {title}
+              </h2>
+              <button
+                onClick={onClose}
+                className="inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Close (Esc)"
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            </div>
 
-      {/* Footer */}
-      {footer && (
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4 flex-shrink-0">
-          {footer}
-        </div>
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 p-5">
+              {children}
+            </div>
+
+            {/* Footer */}
+            {footer && (
+              <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4 flex-shrink-0">
+                {footer}
+              </div>
+            )}
+          </motion.div>
+        </>
       )}
-    </dialog>
+    </AnimatePresence>
   );
 }

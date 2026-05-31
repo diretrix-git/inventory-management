@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRole } from "@/components/providers/RoleProvider";
+import { cn } from "@/lib/utils";
 import type { IProduct } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -336,9 +337,24 @@ export default function ProductsPage() {
       cell: ({ row }) => (
         <span className="text-muted-foreground">
           {row.original.category ? (
-            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFilterCategory(
+                  filterCategory === row.original.category ? "" : (row.original.category ?? "")
+                );
+              }}
+              className={cn(
+                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
+                filterCategory === row.original.category
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted hover:bg-primary/10 hover:text-primary cursor-pointer"
+              )}
+              title={filterCategory === row.original.category ? "Click to clear filter" : `Filter by "${row.original.category}"`}
+            >
               {row.original.category}
-            </span>
+            </button>
           ) : "—"}
         </span>
       ),
@@ -419,7 +435,10 @@ export default function ProductsPage() {
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="h-7 rounded-md border border-input bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={cn(
+              "h-7 rounded-md border border-input bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              filterCategory && "border-primary text-primary font-medium"
+            )}
             aria-label="Filter by category"
           >
             <option value="">All categories</option>
