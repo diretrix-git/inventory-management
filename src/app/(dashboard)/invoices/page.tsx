@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Download, Loader2, Eye, X } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ViewModal } from "@/components/shared/ViewModal";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { Button } from "@/components/ui/button";
 import type { IInvoice } from "@/types";
@@ -81,9 +82,7 @@ export default function InvoicesPage() {
       header: "Order #",
       cell: ({ row }) => {
         const orderId = row.original.orderId;
-        const orderNumber = typeof orderId === "object" && orderId !== null
-          ? orderId.orderNumber
-          : "—";
+        const orderNumber = typeof orderId === "object" && orderId !== null ? orderId.orderNumber : "—";
         return <span className="font-mono text-xs tabular-nums text-muted-foreground">{orderNumber}</span>;
       },
     },
@@ -116,7 +115,7 @@ export default function InvoicesPage() {
       ),
     },
     {
-      id: "actions",
+      id: "download",
       header: "",
       enableSorting: false,
       enableHiding: false,
@@ -124,12 +123,7 @@ export default function InvoicesPage() {
         const inv = row.original;
         const isDownloading = downloadingId === inv._id;
         return (
-          <div className="flex items-center justify-end gap-1">
-            <Tooltip content="View invoice details">
-              <Button variant="ghost" size="icon-sm" onClick={() => setViewInvoice(inv)} aria-label={`View invoice ${inv.invoiceNumber}`}>
-                <Eye className="size-3.5" aria-hidden="true" />
-              </Button>
-            </Tooltip>
+          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
             <Tooltip content="Download PDF">
               <Button
                 variant="ghost"
@@ -154,7 +148,8 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <PageHeader title="Invoices" description="View and download invoices." />
+      <PageHeader title="Invoices" description="Click any row to view details. Download PDF from the row action." />
+
       <DataTable
         columns={columns}
         data={invoices}
@@ -163,33 +158,68 @@ export default function InvoicesPage() {
         searchPlaceholder="Search by customer…"
         emptyTitle="No invoices yet"
         emptyDescription="Invoices are created automatically when orders are placed."
+        onRowClick={(inv) => setViewInvoice(inv)}
       />
 
-      {/* Invoice view modal */}
-      {viewInvoice && (
-        <dialog
-          open
-          className="fixed inset-0 z-50 m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl border border-border bg-popover p-0 shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:flex-col"
-          aria-label={`Invoice details: ${viewInvoice.invoiceNumber}`}
-          onClick={(e) => { if (e.target === e.currentTarget) setViewInvoice(null); }}
-        >
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="text-base font-semibold text-foreground">Invoice Details</h2>
-            <button onClick={() => setViewInvoice(null)} className="inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Close">
-              <X className="size-4" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="overflow-y-auto p-5 flex flex-col gap-4">
+      {/* Invoice view modal — opens on row click, close with Esc */}
+      <ViewModal
+        open={!!viewInvoice}
+        onClose={() => setViewInvoice(null)}
+        title="Invoice Details"
+        footer={
+          viewInvoice ? (
+            <>
+              <Tooltip content="Download as PDF">
+                <Button
+                  variant="outline"
+                  onClick={() => handleDownload(viewInvoice)}
+                  disabled={downloadingId === viewInvoice._id}
+                >
+                  {downloadingId === viewInvoice._id ? (
+                    <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                  ) : (
+                    <Download className="size-3.5 mr-1.5" aria-hidden="true" />
+                  )}
+                  Download PDF
+                </Button>
+              </Tooltip>
+              <Button variant="outline" onClick={() => setViewInvoice(null)}>Close</Button>
+            </>
+          ) : undefined
+        }
+      >
+        {viewInvoice && (
+          <div className="flex flex-col gap-4">
+            {/* Meta */}
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><p className="text-xs text-muted-foreground mb-0.5">Invoice #</p><p className="font-mono font-semibold">{viewInvoice.invoiceNumber}</p></div>
-              <div><p className="text-xs text-muted-foreground mb-0.5">Status</p><StatusBadge status={viewInvoice.status} /></div>
-              <div><p className="text-xs text-muted-foreground mb-0.5">Order #</p>
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Invoice #</p>
+                <p className="font-mono font-semibold">{viewInvoice.invoiceNumber}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Status</p>
+                <StatusBadge status={viewInvoice.status} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Order #</p>
                 <p className="font-mono text-xs">
-                  {typeof viewInvoice.orderId === "object" && viewInvoice.orderId !== null ? viewInvoice.orderId.orderNumber : "—"}
+                  {typeof viewInvoice.orderId === "object" && viewInvoice.orderId !== null
+                    ? viewInvoice.orderId.orderNumber
+                    : "—"}
                 </p>
               </div>
-              <div><p className="text-xs text-muted-foreground mb-0.5">Date</p><p className="font-mono text-xs">{new Date(viewInvoice.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p></div>
-              <div className="col-span-2"><p className="text-xs text-muted-foreground mb-0.5">Issued To</p><p className="font-medium">{viewInvoice.issuedTo}</p></div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Date</p>
+                <p className="font-mono text-xs">
+                  {new Date(viewInvoice.createdAt).toLocaleDateString("en-US", {
+                    year: "numeric", month: "long", day: "numeric",
+                  })}
+                </p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-xs text-muted-foreground mb-0.5">Issued To</p>
+                <p className="font-medium">{viewInvoice.issuedTo}</p>
+              </div>
             </div>
 
             {/* Line items */}
@@ -204,7 +234,9 @@ export default function InvoicesPage() {
                         <p className="font-mono text-xs text-muted-foreground">{item.sku}</p>
                       </div>
                       <div className="text-right flex-shrink-0 ml-3">
-                        <p className="font-mono text-xs text-muted-foreground">×{item.quantity} @ ${item.unitPrice.toFixed(2)}</p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          ×{item.quantity} @ ${item.unitPrice.toFixed(2)}
+                        </p>
                         <p className="font-mono text-sm font-semibold">${item.lineTotal.toFixed(2)}</p>
                       </div>
                     </div>
@@ -229,19 +261,8 @@ export default function InvoicesPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
-            <Button variant="outline" onClick={() => handleDownload(viewInvoice)} disabled={downloadingId === viewInvoice._id}>
-              {downloadingId === viewInvoice._id ? (
-                <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
-              ) : (
-                <Download className="size-3.5 mr-1.5" aria-hidden="true" />
-              )}
-              Download PDF
-            </Button>
-            <Button variant="outline" onClick={() => setViewInvoice(null)}>Close</Button>
-          </div>
-        </dialog>
-      )}
+        )}
+      </ViewModal>
     </>
   );
 }

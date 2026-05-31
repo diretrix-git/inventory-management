@@ -4,6 +4,7 @@ export { EmptyState } from "./EmptyState";
 export { StatCard } from "./StatCard";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { ErrorModal } from "./ErrorModal";
+export { ViewModal } from "./ViewModal";
 export { PageTransition } from "./PageTransition";
 export { DataTable } from "./DataTable";
 export { PageSkeleton } from "./PageSkeleton";

@@ -2,8 +2,15 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/webp"];
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".webp"];
+const MAX_SIZE_BYTES = 200 * 1024; // 200 KB
+const MAX_SIZE_LABEL = "200 KB";
 
 interface CloudinaryUploadProps {
   value?: string | null;
@@ -36,13 +43,18 @@ export function CloudinaryUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate type and size (max 5MB)
-    if (!file.type.startsWith("image/")) {
-      setError("Please select an image file");
+    // Validate format — JPEG and WebP only
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError(`Only JPEG and WebP images are allowed. Got: ${file.type || "unknown"}`);
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be under 5MB");
+
+    // Validate size — max 200 KB
+    if (file.size > MAX_SIZE_BYTES) {
+      const sizeMB = (file.size / 1024).toFixed(0);
+      setError(`Image is too large (${sizeMB} KB). Maximum allowed size is ${MAX_SIZE_LABEL}.`);
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
 
@@ -54,6 +66,10 @@ export function CloudinaryUpload({
       formData.append("file", file);
       formData.append("upload_preset", uploadPreset ?? "inventory_uploads");
       formData.append("folder", folder);
+      // Ask Cloudinary to auto-compress and limit dimensions
+      formData.append("transformation", JSON.stringify([
+        { quality: "auto:good", fetch_format: "auto", width: 800, crop: "limit" },
+      ]));
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
@@ -68,10 +84,9 @@ export function CloudinaryUpload({
       const data = await res.json();
       onChange(data.secure_url as string);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : "Upload failed — please try again");
     } finally {
       setIsUploading(false);
-      // Reset input so same file can be re-selected
       if (inputRef.current) inputRef.current.value = "";
     }
   }
@@ -117,27 +132,33 @@ export function CloudinaryUpload({
           {isUploading ? (
             <Loader2 className="size-6 animate-spin" aria-hidden="true" />
           ) : (
-            <Upload className="size-6" aria-hidden="true" />
+            <ImageIcon className="size-6" aria-hidden="true" />
           )}
           <span className="text-xs font-medium">
             {isUploading ? "Uploading…" : label}
           </span>
+          <span className="text-xs text-muted-foreground">
+            JPEG or WebP · max {MAX_SIZE_LABEL}
+          </span>
           {!cloudName && (
-            <span className="text-xs text-destructive">NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME not set</span>
+            <span className="text-xs text-destructive mt-1">Cloudinary not configured</span>
           )}
         </button>
       )}
 
+      {/* Hidden file input — only accept JPEG and WebP */}
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={ALLOWED_EXTENSIONS.join(",")}
         className="sr-only"
         onChange={handleFileChange}
         aria-hidden="true"
       />
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && (
+        <p className="text-xs text-destructive" role="alert">{error}</p>
+      )}
     </div>
   );
 }

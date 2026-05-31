@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   AreaChart, Area, BarChart, Bar,
@@ -19,6 +19,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useRole } from "@/components/providers/RoleProvider";
+import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -283,7 +284,8 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchDashboard = useCallback(() => {
+    setIsLoading(true);
     fetch("/api/dashboard", { cache: "no-store" })
       .then((r) => r.json())
       .then((json) => {
@@ -293,6 +295,13 @@ export default function DashboardPage() {
       .catch(() => toast.error("Failed to load dashboard data"))
       .finally(() => setIsLoading(false));
   }, []);
+
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+
+  // Admin: listen for new orders from any tab and refresh dashboard
+  useOrderNotifications(
+    role === "admin" ? () => fetchDashboard() : undefined
+  );
 
   return (
     <PageTransition>

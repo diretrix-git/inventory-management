@@ -76,6 +76,8 @@ interface DataTableProps<TData, TValue> {
   emptyDescription?: string;
   /** All string values from the data for fuzzy suggestion */
   fuzzyValues?: string[];
+  /** Called when a row is clicked — enables row-click to open modal */
+  onRowClick?: (row: TData) => void;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
@@ -90,6 +92,7 @@ export function DataTable<TData, TValue>({
   emptyTitle = "No results",
   emptyDescription = "Nothing to show here yet.",
   fuzzyValues,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -284,7 +287,14 @@ export function DataTable<TData, TValue>({
                 ))
               ) : table.getRowModel().rows.length > 0 ? (
                 table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-muted/40 transition-colors">
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      "hover:bg-muted/40 transition-colors",
+                      onRowClick && "cursor-pointer"
+                    )}
+                    onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3 text-sm text-foreground">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

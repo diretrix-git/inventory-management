@@ -237,6 +237,21 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const json = await res.json();
       if (!res.ok) { toast.error(json.error ?? "Failed to create order"); return; }
       toast.success(`Order ${json.order.orderNumber} created`);
+
+      // Broadcast to admin dashboard (same-origin tabs via BroadcastChannel)
+      try {
+        const channel = new BroadcastChannel("order_notifications");
+        channel.postMessage({
+          type: "ORDER_CREATED",
+          orderNumber: json.order.orderNumber,
+          customerName: data.customerName.trim(),
+          totalAmount: json.order.totalAmount,
+        });
+        channel.close();
+      } catch {
+        // BroadcastChannel not supported — silent fail
+      }
+
       onSuccess();
     } catch {
       toast.error("Network error — please try again");

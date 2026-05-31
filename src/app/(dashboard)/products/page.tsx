@@ -13,6 +13,7 @@ import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ErrorModal } from "@/components/shared/ErrorModal";
+import { ViewModal } from "@/components/shared/ViewModal";
 import { CloudinaryUpload } from "@/components/shared/CloudinaryUpload";
 import { CategorySelect } from "@/components/shared/CategorySelect";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -376,12 +377,7 @@ export default function ProductsPage() {
       cell: ({ row }) => {
         const p = row.original;
         return (
-          <div className="flex items-center justify-end gap-1.5">
-            <Tooltip content="View details">
-              <Button variant="ghost" size="icon-sm" onClick={() => setViewProduct(p)} aria-label={`View ${p.name}`}>
-                <Eye className="size-3.5" aria-hidden="true" />
-              </Button>
-            </Tooltip>
+          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
             <Tooltip content="Edit product">
               <Button variant="ghost" size="icon-sm" onClick={() => { setEditProduct(p); setSheetOpen(true); }} aria-label={`Edit ${p.name}`}>
                 <Pencil className="size-3.5" aria-hidden="true" />
@@ -395,24 +391,7 @@ export default function ProductsPage() {
           </div>
         );
       },
-    }] as ColumnDef<ProductRow>[]) : [{
-      id: "actions",
-      header: "",
-      enableSorting: false,
-      enableHiding: false,
-      cell: ({ row }) => {
-        const p = row.original;
-        return (
-          <div className="flex items-center justify-end">
-            <Tooltip content="View details">
-              <Button variant="ghost" size="icon-sm" onClick={() => setViewProduct(p)} aria-label={`View ${p.name}`}>
-                <Eye className="size-3.5" aria-hidden="true" />
-              </Button>
-            </Tooltip>
-          </div>
-        );
-      },
-    }] as ColumnDef<ProductRow>[]),
+    }] as ColumnDef<ProductRow>[]) : []),
   ];
 
   return (
@@ -508,6 +487,7 @@ export default function ProductsPage() {
         emptyTitle="No products yet"
         emptyDescription={isAdmin ? "Add your first product using the button above." : "No products have been added to the catalog yet."}
         fuzzyValues={productNames}
+        onRowClick={(p) => setViewProduct(p)}
       />
 
       {isAdmin && (
@@ -544,21 +524,24 @@ export default function ProductsPage() {
         onAction={handleDelete}
       />
 
-      {/* Product view modal */}
-      {viewProduct && (
-        <dialog
-          open
-          className="fixed inset-0 z-50 m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl border border-border bg-popover p-0 shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:flex-col"
-          aria-label={`Product details: ${viewProduct.name}`}
-          onClick={(e) => { if (e.target === e.currentTarget) setViewProduct(null); }}
-        >
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="text-base font-semibold text-foreground">Product Details</h2>
-            <button onClick={() => setViewProduct(null)} className="inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Close">
-              <X className="size-4" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="overflow-y-auto p-5 flex flex-col gap-4">
+      {/* Product view modal — opens on row click */}
+      <ViewModal
+        open={!!viewProduct}
+        onClose={() => setViewProduct(null)}
+        title="Product Details"
+        footer={
+          <>
+            {isAdmin && viewProduct && (
+              <Button variant="outline" onClick={() => { setViewProduct(null); setEditProduct(viewProduct); setSheetOpen(true); }}>
+                <Pencil className="size-3.5 mr-1.5" aria-hidden="true" />Edit
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setViewProduct(null)}>Close</Button>
+          </>
+        }
+      >
+        {viewProduct && (
+          <div className="flex flex-col gap-4">
             {viewProduct.imageUrl && (
               <div className="aspect-video rounded-lg overflow-hidden border border-border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -572,7 +555,8 @@ export default function ProductsPage() {
               <div><p className="text-xs text-muted-foreground mb-0.5">Price</p><p className="font-mono">${viewProduct.price.toFixed(2)}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Stock</p><p className="font-mono">{viewProduct.quantity}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Low Stock Threshold</p><p className="font-mono">{viewProduct.lowStockThreshold}</p></div>
-              <div className="col-span-2"><p className="text-xs text-muted-foreground mb-0.5">Status</p>
+              <div className="col-span-2">
+                <p className="text-xs text-muted-foreground mb-0.5">Status</p>
                 {viewProduct.isLowStock ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/15 px-2.5 py-0.5 text-xs font-medium text-warning">
                     <AlertTriangle className="size-3" aria-hidden="true" />Low Stock
@@ -584,16 +568,8 @@ export default function ProductsPage() {
               )}
             </div>
           </div>
-          <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
-            {isAdmin && (
-              <Button variant="outline" onClick={() => { setViewProduct(null); setEditProduct(viewProduct); setSheetOpen(true); }}>
-                <Pencil className="size-3.5 mr-1.5" aria-hidden="true" />Edit
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => setViewProduct(null)}>Close</Button>
-          </div>
-        </dialog>
-      )}
+        )}
+      </ViewModal>
     </>
   );
 }
