@@ -58,6 +58,7 @@ export interface IOrder {
   totalAmount: number;
   status: "pending" | "confirmed" | "cancelled";
   customerName: string;
+  customerEmail?: string;
   notes?: string;
   createdBy: string | Types.ObjectId;
   createdAt: Date;

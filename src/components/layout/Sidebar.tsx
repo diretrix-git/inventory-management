@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
@@ -42,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Sales Report", href: "/sales-report", icon: TrendingUp, roles: ["admin"] },
   { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, roles: ["admin"] },
   { label: "Users", href: "/users", icon: Users, roles: ["admin"] },
+  { label: "Categories", href: "/categories", icon: Tag, roles: ["admin"] },
   { label: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
   { label: "Profile", href: "/profile", icon: UserCircle, roles: ["admin", "staff"] },
 ];

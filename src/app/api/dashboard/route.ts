@@ -6,7 +6,7 @@ import { Product } from "@/models/Product";
 import { auth } from "../../../../auth";
 
 // ─── GET /api/dashboard ───────────────────────────────────────────────────────
-// All roles — aggregated dashboard data
+// All roles — aggregated dashboard data (admin gets full view, staff gets task-focused view)
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -14,12 +14,63 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const isStaff = session.user.role === "staff";
+
   try {
     await connectDB();
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    // ── Staff dashboard (task-focused) ────────────────────────────────────────
+    if (isStaff) {
+      const [
+        todayRevenueResult,
+        pendingOrderCount,
+        lowStockProducts,
+        recentlySoldProducts,
+        recentOrders,
+      ] = await Promise.all([
+        // Today's confirmed revenue
+        Invoice.aggregate([
+          { $match: { status: "issued", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
+          { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+        ]),
+        // Pending orders count
+        Order.countDocuments({ status: "pending" }),
+        // Low stock products
+        Product.find({}).lean(),
+        // Recently sold products (from confirmed orders today)
+        Order.aggregate([
+          { $match: { status: "confirmed", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
+          { $unwind: "$items" },
+          { $group: { _id: "$items.productId", productName: { $first: "$items.productName" }, sku: { $first: "$items.sku" }, totalQty: { $sum: "$items.quantity" } } },
+          { $sort: { totalQty: -1 } },
+          { $limit: 8 },
+        ]),
+        // Recent orders (last 10)
+        Order.find({}).sort({ createdAt: -1 }).limit(10).lean(),
+      ]);
+
+      const lowStockList = lowStockProducts.filter((p) => p.quantity <= p.lowStockThreshold);
+
+      return NextResponse.json({
+        role: "staff",
+        stats: {
+          todayRevenue: todayRevenueResult[0]?.total ?? 0,
+          pendingOrders: pendingOrderCount,
+          lowStockCount: lowStockList.length,
+        },
+        lowStockProducts: lowStockList.slice(0, 8),
+        recentlySoldProducts,
+        recentOrders,
+      });
+    }
+
+    // ── Admin dashboard ────────────────────────────────────────────────────────
 
     // ── Stat cards ────────────────────────────────────────────────────────────
 
@@ -108,6 +159,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({
+      role: "admin",
       stats: {
         totalRevenue,
         totalOrders: monthlyOrderCount,

@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Plus, CheckCircle, XCircle, X } from "lucide-react";
+import { Plus, CheckCircle, XCircle, X, Eye } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { Button } from "@/components/ui/button";
 import { OrderForm } from "@/components/orders/OrderForm";
 import { useRole } from "@/components/providers/RoleProvider";
@@ -39,6 +40,7 @@ export default function OrdersPage() {
     action: "confirmed" | "cancelled";
   } | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [viewOrder, setViewOrder] = useState<OrderRow | null>(null);
 
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
@@ -113,6 +115,19 @@ export default function OrdersPage() {
         </span>
       ),
     },
+    {
+      id: "view",
+      header: "",
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => (
+        <Tooltip content="View order details">
+          <Button variant="ghost" size="icon-sm" onClick={() => setViewOrder(row.original)} aria-label="View order">
+            <Eye className="size-3.5" aria-hidden="true" />
+          </Button>
+        </Tooltip>
+      ),
+    },
     ...(isAdmin
       ? ([
           {
@@ -125,24 +140,28 @@ export default function OrdersPage() {
               return (
                 <div className="flex items-center justify-end gap-1.5">
                   {o.status === "pending" && (
-                    <Button
-                      variant="ghost" size="icon-sm"
-                      onClick={() => setConfirmAction({ order: o, action: "confirmed" })}
-                      aria-label="Confirm order"
-                      className="text-[#1D9E75] hover:text-[#1D9E75] hover:bg-[#1D9E75]/10"
-                    >
-                      <CheckCircle className="size-3.5" aria-hidden="true" />
-                    </Button>
+                    <Tooltip content="Confirm order">
+                      <Button
+                        variant="ghost" size="icon-sm"
+                        onClick={() => setConfirmAction({ order: o, action: "confirmed" })}
+                        aria-label="Confirm order"
+                        className="text-[#1D9E75] hover:text-[#1D9E75] hover:bg-[#1D9E75]/10"
+                      >
+                        <CheckCircle className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    </Tooltip>
                   )}
                   {(o.status === "pending" || o.status === "confirmed") && (
-                    <Button
-                      variant="ghost" size="icon-sm"
-                      onClick={() => setConfirmAction({ order: o, action: "cancelled" })}
-                      aria-label="Cancel order"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <XCircle className="size-3.5" aria-hidden="true" />
-                    </Button>
+                    <Tooltip content="Cancel order">
+                      <Button
+                        variant="ghost" size="icon-sm"
+                        onClick={() => setConfirmAction({ order: o, action: "cancelled" })}
+                        aria-label="Cancel order"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <XCircle className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    </Tooltip>
                   )}
                 </div>
               );
@@ -204,6 +223,59 @@ export default function OrdersPage() {
           onConfirm={handleStatusUpdate}
           isLoading={isUpdating}
         />
+      )}
+
+      {/* Order view modal */}
+      {viewOrder && (
+        <dialog
+          open
+          className="fixed inset-0 z-50 m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl border border-border bg-popover p-0 shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:flex-col"
+          aria-label={`Order details: ${viewOrder.orderNumber}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setViewOrder(null); }}
+        >
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h2 className="text-base font-semibold text-foreground">Order Details</h2>
+            <button onClick={() => setViewOrder(null)} className="inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Close">
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="overflow-y-auto p-5 flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-xs text-muted-foreground mb-0.5">Order #</p><p className="font-mono font-semibold">{viewOrder.orderNumber}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Status</p><StatusBadge status={viewOrder.status} /></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Customer</p><p className="font-medium">{viewOrder.customerName}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Date</p><p className="font-mono text-xs">{new Date(viewOrder.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Subtotal</p><p className="font-mono">${viewOrder.subtotal.toFixed(2)}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Tax ({viewOrder.taxRate}%)</p><p className="font-mono">${viewOrder.taxAmount.toFixed(2)}</p></div>
+              <div className="col-span-2 border-t border-border pt-2"><p className="text-xs text-muted-foreground mb-0.5">Total</p><p className="font-mono text-lg font-semibold">${viewOrder.totalAmount.toFixed(2)}</p></div>
+            </div>
+            {viewOrder.items && viewOrder.items.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Items</p>
+                <div className="rounded-lg border border-border overflow-hidden">
+                  {viewOrder.items.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between px-3 py-2.5 border-b border-border last:border-0 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{item.productName}</p>
+                        <p className="font-mono text-xs text-muted-foreground">{item.sku}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-3">
+                        <p className="font-mono text-xs text-muted-foreground">×{item.quantity} @ ${item.unitPrice.toFixed(2)}</p>
+                        <p className="font-mono text-sm font-semibold">${item.lineTotal.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {viewOrder.notes && (
+              <div><p className="text-xs text-muted-foreground mb-0.5">Notes</p><p className="text-sm text-muted-foreground">{viewOrder.notes}</p></div>
+            )}
+          </div>
+          <div className="flex justify-end border-t border-border px-5 py-4">
+            <Button variant="outline" onClick={() => setViewOrder(null)}>Close</Button>
+          </div>
+        </dialog>
       )}
     </>
   );

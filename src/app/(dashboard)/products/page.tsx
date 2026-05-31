@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, X, Loader2, AlertTriangle, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, AlertTriangle, Package, Eye, Filter, SlidersHorizontal } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ErrorModal } from "@/components/shared/ErrorModal";
 import { CloudinaryUpload } from "@/components/shared/CloudinaryUpload";
 import { CategorySelect } from "@/components/shared/CategorySelect";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -223,6 +224,12 @@ export default function ProductsPage() {
   const [deleteTarget, setDeleteTarget] = useState<ProductRow | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [viewProduct, setViewProduct] = useState<ProductRow | null>(null);
+  // Filters
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterMinPrice, setFilterMinPrice] = useState("");
+  const [filterMaxPrice, setFilterMaxPrice] = useState("");
+  const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -279,6 +286,18 @@ export default function ProductsPage() {
 
   // All product names for fuzzy search suggestions
   const productNames = products.map((p) => p.name);
+
+  // Apply filters
+  const filteredProducts = products.filter((p) => {
+    if (filterCategory && p.category !== filterCategory) return false;
+    if (filterMinPrice && p.price < parseFloat(filterMinPrice)) return false;
+    if (filterMaxPrice && p.price > parseFloat(filterMaxPrice)) return false;
+    if (filterStock === "low" && !p.isLowStock) return false;
+    if (filterStock === "ok" && p.isLowStock) return false;
+    return true;
+  });
+
+  const hasActiveFilters = filterCategory || filterMinPrice || filterMaxPrice || filterStock !== "all";
 
   const columns: ColumnDef<ProductRow>[] = [
     {
@@ -358,16 +377,42 @@ export default function ProductsPage() {
         const p = row.original;
         return (
           <div className="flex items-center justify-end gap-1.5">
-            <Button variant="ghost" size="icon-sm" onClick={() => { setEditProduct(p); setSheetOpen(true); }} aria-label={`Edit ${p.name}`}>
-              <Pencil className="size-3.5" aria-hidden="true" />
-            </Button>
-            <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(p)} aria-label={`Delete ${p.name}`} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-              <Trash2 className="size-3.5" aria-hidden="true" />
-            </Button>
+            <Tooltip content="View details">
+              <Button variant="ghost" size="icon-sm" onClick={() => setViewProduct(p)} aria-label={`View ${p.name}`}>
+                <Eye className="size-3.5" aria-hidden="true" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Edit product">
+              <Button variant="ghost" size="icon-sm" onClick={() => { setEditProduct(p); setSheetOpen(true); }} aria-label={`Edit ${p.name}`}>
+                <Pencil className="size-3.5" aria-hidden="true" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Delete product">
+              <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(p)} aria-label={`Delete ${p.name}`} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Trash2 className="size-3.5" aria-hidden="true" />
+              </Button>
+            </Tooltip>
           </div>
         );
       },
-    }] as ColumnDef<ProductRow>[]) : []),
+    }] as ColumnDef<ProductRow>[]) : [{
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => {
+        const p = row.original;
+        return (
+          <div className="flex items-center justify-end">
+            <Tooltip content="View details">
+              <Button variant="ghost" size="icon-sm" onClick={() => setViewProduct(p)} aria-label={`View ${p.name}`}>
+                <Eye className="size-3.5" aria-hidden="true" />
+              </Button>
+            </Tooltip>
+          </div>
+        );
+      },
+    }] as ColumnDef<ProductRow>[]),
   ];
 
   return (
@@ -383,9 +428,79 @@ export default function ProductsPage() {
         ) : undefined}
       />
 
+      {/* Filters bar */}
+      <div className="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground flex-shrink-0">
+          <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+          Filters
+        </div>
+
+        {/* Category filter */}
+        {categories.length > 0 && (
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="h-7 rounded-md border border-input bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Filter by category"
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+
+        {/* Price range */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Price</span>
+          <input
+            type="number" min="0" step="0.01" placeholder="Min"
+            value={filterMinPrice}
+            onChange={(e) => setFilterMinPrice(e.target.value)}
+            className="h-7 w-20 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Minimum price"
+          />
+          <span className="text-xs text-muted-foreground">–</span>
+          <input
+            type="number" min="0" step="0.01" placeholder="Max"
+            value={filterMaxPrice}
+            onChange={(e) => setFilterMaxPrice(e.target.value)}
+            className="h-7 w-20 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Maximum price"
+          />
+        </div>
+
+        {/* Stock status filter */}
+        <select
+          value={filterStock}
+          onChange={(e) => setFilterStock(e.target.value as "all" | "low" | "ok")}
+          className="h-7 rounded-md border border-input bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Filter by stock status"
+        >
+          <option value="all">All stock</option>
+          <option value="low">Low stock only</option>
+          <option value="ok">In stock only</option>
+        </select>
+
+        {/* Clear filters */}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={() => { setFilterCategory(""); setFilterMinPrice(""); setFilterMaxPrice(""); setFilterStock("all"); }}
+            className="text-xs text-primary hover:underline underline-offset-2"
+          >
+            Clear filters
+          </button>
+        )}
+
+        {hasActiveFilters && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            {filteredProducts.length} of {products.length} products
+          </span>
+        )}
+      </div>
+
       <DataTable
         columns={columns}
-        data={products}
+        data={filteredProducts}
         isLoading={isLoading}
         error={fetchError}
         searchKey="name"
@@ -428,6 +543,57 @@ export default function ProductsPage() {
         actionLabel="Try again"
         onAction={handleDelete}
       />
+
+      {/* Product view modal */}
+      {viewProduct && (
+        <dialog
+          open
+          className="fixed inset-0 z-50 m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl border border-border bg-popover p-0 shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:flex-col"
+          aria-label={`Product details: ${viewProduct.name}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setViewProduct(null); }}
+        >
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h2 className="text-base font-semibold text-foreground">Product Details</h2>
+            <button onClick={() => setViewProduct(null)} className="inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Close">
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="overflow-y-auto p-5 flex flex-col gap-4">
+            {viewProduct.imageUrl && (
+              <div className="aspect-video rounded-lg overflow-hidden border border-border bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={viewProduct.imageUrl} alt={viewProduct.name} className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-xs text-muted-foreground mb-0.5">Name</p><p className="font-medium">{viewProduct.name}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">SKU</p><p className="font-mono">{viewProduct.sku}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Category</p><p>{viewProduct.category ?? "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Price</p><p className="font-mono">${viewProduct.price.toFixed(2)}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Stock</p><p className="font-mono">{viewProduct.quantity}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Low Stock Threshold</p><p className="font-mono">{viewProduct.lowStockThreshold}</p></div>
+              <div className="col-span-2"><p className="text-xs text-muted-foreground mb-0.5">Status</p>
+                {viewProduct.isLowStock ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/15 px-2.5 py-0.5 text-xs font-medium text-warning">
+                    <AlertTriangle className="size-3" aria-hidden="true" />Low Stock
+                  </span>
+                ) : <StatusBadge status="active" />}
+              </div>
+              {viewProduct.description && (
+                <div className="col-span-2"><p className="text-xs text-muted-foreground mb-0.5">Description</p><p className="text-sm text-muted-foreground">{viewProduct.description}</p></div>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
+            {isAdmin && (
+              <Button variant="outline" onClick={() => { setViewProduct(null); setEditProduct(viewProduct); setSheetOpen(true); }}>
+                <Pencil className="size-3.5 mr-1.5" aria-hidden="true" />Edit
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setViewProduct(null)}>Close</Button>
+          </div>
+        </dialog>
+      )}
     </>
   );
 }

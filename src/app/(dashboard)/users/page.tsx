@@ -13,6 +13,7 @@ import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PasswordInput } from "@/components/shared/PasswordInput";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -449,35 +450,39 @@ export default function UsersPage() {
               const user = row.original;
               return (
                 <div className="flex items-center justify-end gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => openEdit(user)}
-                    aria-label={`Edit ${user.name}`}
-                  >
-                    <Pencil className="size-3.5" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => openConfirm(user)}
-                    aria-label={
-                      user.isActive
-                        ? `Deactivate ${user.name}`
-                        : `Activate ${user.name}`
-                    }
-                    className={
-                      user.isActive
-                        ? "text-destructive hover:text-destructive hover:bg-destructive/10"
-                        : "text-success hover:text-success hover:bg-success/10"
-                    }
-                  >
-                    {user.isActive ? (
-                      <UserX className="size-3.5" aria-hidden="true" />
-                    ) : (
-                      <UserCheck className="size-3.5" aria-hidden="true" />
-                    )}
-                  </Button>
+                  <Tooltip content="Edit user">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => openEdit(user)}
+                      aria-label={`Edit ${user.name}`}
+                    >
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                    </Button>
+                  </Tooltip>
+                  <Tooltip content={user.isActive ? "Deactivate user" : "Activate user"}>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => openConfirm(user)}
+                      aria-label={
+                        user.isActive
+                          ? `Deactivate ${user.name}`
+                          : `Activate ${user.name}`
+                      }
+                      className={
+                        user.isActive
+                          ? "text-destructive hover:text-destructive hover:bg-destructive/10"
+                          : "text-success hover:text-success hover:bg-success/10"
+                      }
+                    >
+                      {user.isActive ? (
+                        <UserX className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        <UserCheck className="size-3.5" aria-hidden="true" />
+                      )}
+                    </Button>
+                  </Tooltip>
                 </div>
               );
             },

@@ -8,6 +8,7 @@ import { SystemSettings } from "@/models/SystemSettings";
 import { requireRole } from "@/lib/auth-utils";
 import { logAction } from "@/lib/audit";
 import { generateOrderNumber, generateInvoiceNumber } from "@/lib/order-utils";
+import { sendOrderEmails } from "@/lib/email";
 import { auth } from "../../../../auth";
 import mongoose from "mongoose";
 
@@ -72,6 +73,7 @@ const createOrderSchema = z.object({
     .min(1, "Customer name is required")
     .max(200, "Customer name too long")
     .refine((v) => v.trim().length > 0, "Customer name cannot be whitespace only"),
+  customerEmail: z.string().email("Invalid email").optional().or(z.literal("")),
   items: z.array(orderLineSchema).min(1, "Order must contain at least one item"),
   notes: z.string().optional(),
 });
@@ -97,7 +99,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { customerName, items, notes } = parsed.data;
+  const { customerName, customerEmail, items, notes } = parsed.data;
 
   try {
     await connectDB();
@@ -177,6 +179,7 @@ export async function POST(req: NextRequest) {
               totalAmount,
               status: "pending",
               customerName: customerName.trim(),
+              customerEmail: customerEmail?.trim() || undefined,
               notes,
               createdBy: session.user.id,
             },
@@ -236,6 +239,21 @@ export async function POST(req: NextRequest) {
       targetModel: "Order",
       targetId: (order as InstanceType<typeof Order>)._id.toString(),
       details: { orderNumber, customerName, totalAmount },
+    });
+
+    // Fire-and-forget email notifications (customer + admin)
+    sendOrderEmails({
+      orderNumber,
+      invoiceNumber,
+      customerName: customerName.trim(),
+      customerEmail: customerEmail?.trim() || undefined,
+      items: orderItems,
+      subtotal,
+      taxRate: settings.taxRate,
+      taxAmount,
+      totalAmount,
+      businessName: settings.businessName ?? "My Business",
+      businessAddress: settings.businessAddress ?? "",
     });
 
     return NextResponse.json({ order }, { status: 201 });
