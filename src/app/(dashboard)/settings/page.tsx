@@ -136,7 +136,7 @@ export default function SettingsPage() {
             {/* Financial settings */}
             <section className="rounded-xl border border-border bg-card p-6">
               <h2 className="text-base font-semibold text-foreground mb-5">Financial &amp; Inventory</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="s-tax">
                     Tax Rate (%)

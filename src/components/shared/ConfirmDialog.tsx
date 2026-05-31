@@ -62,7 +62,7 @@ export function ConfirmDialog({
       onClose={() => onOpenChange(false)}
       onClick={handleBackdropClick}
       className={cn(
-        "fixed inset-0 z-50 m-auto w-full max-w-md rounded-xl border border-border bg-popover p-0 shadow-xl",
+        "fixed inset-0 z-50 m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-border bg-popover p-0 shadow-xl",
         "backdrop:bg-black/50 backdrop:backdrop-blur-sm",
         "open:flex open:flex-col"
       )}

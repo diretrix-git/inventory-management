@@ -81,7 +81,7 @@ export default function AnalyticsPage() {
       />
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-xs text-muted-foreground mb-1">Total Revenue</p>
           <p className="font-mono text-2xl font-semibold tabular-nums">${(data?.summary.totalRevenue ?? 0).toFixed(2)}</p>

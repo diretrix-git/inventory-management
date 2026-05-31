@@ -100,7 +100,7 @@ export function DataTable<TData, TValue>({
           }}
           placeholder={searchPlaceholder}
           className={cn(
-            "h-8 w-64 rounded-lg border border-input bg-background px-3 text-sm",
+            "h-8 w-full max-w-xs rounded-lg border border-input bg-background px-3 text-sm",
             "placeholder:text-muted-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           )}
@@ -239,7 +239,7 @@ export function DataTable<TData, TValue>({
       {/* Pagination */}
       <div className="flex items-center justify-between gap-4 flex-wrap text-sm text-muted-foreground">
         {/* Row count info */}
-        <span>
+        <span className="text-xs">
           {totalRows === 0
             ? "No rows"
             : `${pageIndex * pageSize + 1}–${Math.min((pageIndex + 1) * pageSize, totalRows)} of ${totalRows}`}
@@ -248,7 +248,7 @@ export function DataTable<TData, TValue>({
         <div className="flex items-center gap-3">
           {/* Page size selector */}
           <div className="flex items-center gap-1.5">
-            <label htmlFor="page-size" className="text-xs">
+            <label htmlFor="page-size" className="text-xs hidden sm:inline">
               Rows per page
             </label>
             <select

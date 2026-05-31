@@ -106,7 +106,7 @@ export default function SalesReportPage() {
 
       {/* Summary cards */}
       {summary && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
           {[
             { label: "Total Revenue", value: `$${summary.totalRevenue.toFixed(2)}` },
             { label: "Total Orders", value: summary.totalOrders.toString() },

@@ -16,12 +16,12 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex items-start justify-between gap-4 mb-6",
+        "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6",
         className
       )}
     >
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground truncate">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
           {title}
         </h1>
         {description && (
@@ -29,7 +29,7 @@ export function PageHeader({
         )}
       </div>
       {action && (
-        <div className="flex-shrink-0">{action}</div>
+        <div className="flex-shrink-0 flex flex-wrap gap-2">{action}</div>
       )}
     </div>
   );
