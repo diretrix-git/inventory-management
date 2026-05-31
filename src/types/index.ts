@@ -9,6 +9,7 @@ export interface IUser {
   passwordHash?: string;
   role: Role;
   isActive: boolean;
+  image?: string;
   createdAt: Date;
 }
 

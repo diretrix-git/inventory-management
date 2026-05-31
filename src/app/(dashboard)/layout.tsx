@@ -3,6 +3,7 @@ import { auth } from "../../../auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { RoleProvider } from "@/components/providers/RoleProvider";
+import { MobileLayoutShell } from "@/components/layout/MobileLayoutShell";
 import type { Role } from "@/types";
 
 export default async function DashboardLayout({
@@ -17,16 +18,17 @@ export default async function DashboardLayout({
   }
 
   const role = (session.user.role ?? "staff") as Role;
+  const user = {
+    name: session.user.name ?? null,
+    email: session.user.email ?? null,
+    image: session.user.image ?? null,
+  };
 
   return (
     <RoleProvider role={role}>
-      <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar role={role} />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <Header user={session.user} />
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
-        </div>
-      </div>
+      <MobileLayoutShell role={role} user={user}>
+        {children}
+      </MobileLayoutShell>
     </RoleProvider>
   );
 }

@@ -10,12 +10,12 @@ import { User } from "@/models/User";
 const updateProfileSchema = z
   .object({
     name: z.string().min(1).max(100).optional(),
+    image: z.string().url("Invalid image URL").optional(),
     currentPassword: z.string().optional(),
     newPassword: z.string().min(8).optional(),
   })
   .refine(
     (data) => {
-      // If newPassword is provided, currentPassword must also be provided
       if (data.newPassword && !data.currentPassword) return false;
       return true;
     },
@@ -26,7 +26,7 @@ const updateProfileSchema = z
   );
 
 // ─── PUT /api/profile ─────────────────────────────────────────────────────────
-// Any authenticated role — update own name and/or password
+// Any authenticated role — update own name, avatar, and/or password
 
 export async function PUT(req: NextRequest) {
   const session = await auth();
@@ -50,10 +50,9 @@ export async function PUT(req: NextRequest) {
     );
   }
 
-  const { name, currentPassword, newPassword } = parsed.data;
+  const { name, image, currentPassword, newPassword } = parsed.data;
 
-  // Must provide at least one field to update
-  if (!name && !newPassword) {
+  if (!name && !newPassword && !image) {
     return NextResponse.json(
       { error: "At least one field must be provided" },
       { status: 400 }
@@ -68,14 +67,10 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Update name if provided
-    if (name !== undefined) {
-      user.name = name;
-    }
+    if (name !== undefined) user.name = name;
+    if (image !== undefined) user.image = image;
 
-    // Update password if requested
     if (newPassword) {
-      // currentPassword is guaranteed by the zod refinement above
       if (!currentPassword) {
         return NextResponse.json(
           { error: "Current password is required when setting a new password" },
@@ -85,10 +80,7 @@ export async function PUT(req: NextRequest) {
 
       if (!user.passwordHash) {
         return NextResponse.json(
-          {
-            error:
-              "Password change is not available for OAuth-authenticated accounts",
-          },
+          { error: "Password change is not available for OAuth-authenticated accounts" },
           { status: 400 }
         );
       }
@@ -106,7 +98,6 @@ export async function PUT(req: NextRequest) {
 
     await user.save();
 
-    // Return updated user without passwordHash
     const userObj = user.toObject() as unknown as Record<string, unknown>;
     delete userObj.passwordHash;
 

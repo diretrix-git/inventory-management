@@ -5,13 +5,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, X, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, AlertTriangle, Package } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { CloudinaryUpload } from "@/components/shared/CloudinaryUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +36,6 @@ const productSchema = z.object({
   lowStockThreshold: z.preprocess((v) => parseInt(String(v), 10), z.number().int("Must be a whole number").min(0, "Must be ≥ 0")),
   supplierId: z.string().optional(),
 });
-
 type ProductFormValues = z.infer<typeof productSchema>;
 
 // ─── ProductSheet ─────────────────────────────────────────────────────────────
@@ -49,6 +49,7 @@ interface ProductSheetProps {
 
 function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetProps) {
   const isEdit = editProduct !== null;
+  const [imageUrl, setImageUrl] = useState<string>(editProduct?.imageUrl ?? "");
 
   const {
     register,
@@ -73,6 +74,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetPro
 
   useEffect(() => {
     if (open) {
+      setImageUrl(editProduct?.imageUrl ?? "");
       reset(
         isEdit
           ? {
@@ -111,6 +113,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetPro
       if (data.category) body.category = data.category;
       if (data.description) body.description = data.description;
       if (data.supplierId) body.supplierId = data.supplierId;
+      if (imageUrl) body.imageUrl = imageUrl;
 
       const res = await fetch(url, {
         method,
@@ -196,6 +199,19 @@ function ProductSheet({ open, onClose, editProduct, onSuccess }: ProductSheetPro
             />
           </div>
 
+          {/* Product image */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Product Image</Label>
+            <CloudinaryUpload
+              value={imageUrl || null}
+              onChange={setImageUrl}
+              onClear={() => setImageUrl("")}
+              label="Upload product image"
+              folder="inventory/products"
+              aspectRatio="aspect-video"
+            />
+          </div>
+
           <div className="flex-1" />
 
           <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
@@ -257,6 +273,25 @@ export default function ProductsPage() {
   }
 
   const columns: ColumnDef<ProductRow>[] = [
+    {
+      id: "image",
+      header: "",
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => {
+        const p = row.original;
+        return p.imageUrl ? (
+          <div className="size-9 rounded-md overflow-hidden border border-border flex-shrink-0 bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.imageUrl} alt={p.name} className="size-9 object-cover" />
+          </div>
+        ) : (
+          <div className="size-9 rounded-md border border-border bg-muted flex items-center justify-center flex-shrink-0">
+            <Package className="size-4 text-muted-foreground" aria-hidden="true" />
+          </div>
+        );
+      },
+    },
     {
       accessorKey: "name",
       header: "Name",

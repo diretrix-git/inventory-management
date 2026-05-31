@@ -53,6 +53,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             id: user._id.toString(),
             name: user.name,
             email: user.email,
+            image: user.image ?? null,
             role: user.role as Role,
           };
         } catch (error) {
@@ -87,6 +88,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (dbUser) {
             token.role = dbUser.role as Role;
             token.name = dbUser.name;
+            // Sync image from DB (set via profile page upload)
+            if (dbUser.image) token.picture = dbUser.image;
           }
         } catch {
           // Keep existing token data on DB error

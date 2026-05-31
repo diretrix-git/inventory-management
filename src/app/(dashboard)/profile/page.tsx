@@ -6,8 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 
 import { PageHeader } from "@/components/shared/PageHeader";
+import { CloudinaryUpload } from "@/components/shared/CloudinaryUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,9 +53,17 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-// ─── Avatar ───────────────────────────────────────────────────────────────────
+// ─── Avatar with upload ───────────────────────────────────────────────────────
 
-function Avatar({ name }: { name: string }) {
+function AvatarUpload({
+  name,
+  imageUrl,
+  onUpload,
+}: {
+  name: string;
+  imageUrl?: string | null;
+  onUpload: (url: string) => void;
+}) {
   const initials = name
     .split(" ")
     .map((part) => part[0])
@@ -63,11 +73,25 @@ function Avatar({ name }: { name: string }) {
     .toUpperCase();
 
   return (
-    <div
-      aria-hidden="true"
-      className="flex size-16 shrink-0 items-center justify-center rounded-full bg-[#185FA5]/15 text-[#185FA5] text-xl font-semibold select-none"
-    >
-      {initials}
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative size-20 rounded-full overflow-hidden border-2 border-border bg-[#185FA5]/15 flex items-center justify-center">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt={name} className="size-20 object-cover" />
+        ) : (
+          <span className="text-[#185FA5] text-2xl font-semibold select-none" aria-hidden="true">
+            {initials}
+          </span>
+        )}
+      </div>
+      <CloudinaryUpload
+        value={null} // always show upload button (not preview — avatar is shown above)
+        onChange={onUpload}
+        label="Change photo"
+        folder="inventory/avatars"
+        aspectRatio=""
+        className="w-auto"
+      />
     </div>
   );
 }
@@ -257,10 +281,27 @@ export default function ProfilePage() {
   const displayName = user?.name ?? "";
   const email = user?.email ?? "";
   const role = (user as { role?: string } | undefined)?.role ?? "staff";
+  const [avatarUrl, setAvatarUrl] = useState<string>(user?.image ?? "");
 
   async function handleNameSuccess(newName: string) {
-    // Update the session so the header reflects the new name immediately
     await update({ name: newName });
+  }
+
+  async function handleAvatarUpload(url: string) {
+    setAvatarUrl(url);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: url }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error ?? "Failed to update avatar"); return; }
+      toast.success("Profile photo updated");
+      await update({ image: url });
+    } catch {
+      toast.error("Network error — please try again");
+    }
   }
 
   if (!user) {
@@ -277,9 +318,13 @@ export default function ProfilePage() {
 
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Identity card */}
-        <section className="flex items-center gap-4 rounded-xl border border-border bg-card p-6">
-          <Avatar name={displayName || email} />
-          <div className="min-w-0 flex-1">
+        <section className="flex flex-col sm:flex-row items-center sm:items-start gap-5 rounded-xl border border-border bg-card p-6">
+          <AvatarUpload
+            name={displayName || email}
+            imageUrl={avatarUrl || user.image}
+            onUpload={handleAvatarUpload}
+          />
+          <div className="min-w-0 flex-1 text-center sm:text-left">
             <p className="truncate text-lg font-semibold text-foreground">
               {displayName || <span className="text-muted-foreground italic">No name set</span>}
             </p>
