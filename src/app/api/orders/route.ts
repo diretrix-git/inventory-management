@@ -9,6 +9,7 @@ import { requireRole } from "@/lib/auth-utils";
 import { logAction } from "@/lib/audit";
 import { generateOrderNumber, generateInvoiceNumber } from "@/lib/order-utils";
 import { sendOrderEmails } from "@/lib/email";
+import { notify } from "@/lib/notify";
 import { auth } from "../../../../auth";
 import mongoose from "mongoose";
 
@@ -157,9 +158,16 @@ export async function POST(req: NextRequest) {
     });
 
     const subtotal = orderItems.reduce((sum, l) => sum + l.lineTotal, 0);
-    const taxRate = settings.taxRate / 100; // stored as 0-100, compute as decimal
+    const taxRate = settings.taxRate / 100;
     const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
     const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
+
+    // ── Approval threshold ───────────────────────────────────────────────────
+    // Orders ≥ 15,000 require admin approval — stock is NOT deducted until approved
+    const APPROVAL_THRESHOLD = 15000;
+    const requiresApproval = totalAmount >= APPROVAL_THRESHOLD;
+    // Auto-confirm orders below threshold
+    const initialStatus = requiresApproval ? "pending" : "confirmed";
 
     // ── MongoDB transaction ──────────────────────────────────────────────────
     const dbSession = await mongoose.startSession();
@@ -177,7 +185,8 @@ export async function POST(req: NextRequest) {
               taxRate: settings.taxRate,
               taxAmount,
               totalAmount,
-              status: "pending",
+              status: initialStatus,
+              requiresApproval,
               customerName: customerName.trim(),
               customerEmail: customerEmail?.trim() || undefined,
               notes,
@@ -188,16 +197,19 @@ export async function POST(req: NextRequest) {
         );
         order = createdOrder;
 
-        // 2. Decrement stock for each product
-        for (const item of items) {
-          await Product.findByIdAndUpdate(
-            item.productId,
-            { $inc: { quantity: -item.quantity } },
-            { session: dbSession }
-          );
+        // 2. Deduct stock ONLY for auto-confirmed orders (below threshold)
+        //    For orders requiring approval, stock is deducted when admin confirms
+        if (!requiresApproval) {
+          for (const item of items) {
+            await Product.findByIdAndUpdate(
+              item.productId,
+              { $inc: { quantity: -item.quantity } },
+              { session: dbSession }
+            );
+          }
         }
 
-        // 3. Create invoice snapshot
+        // 3. Create invoice snapshot (always — even for pending approval orders)
         await Invoice.create(
           [
             {
@@ -216,8 +228,6 @@ export async function POST(req: NextRequest) {
               taxAmount,
               totalAmount,
               status: "issued",
-              // Store business snapshot in details via a separate field isn't in schema,
-              // but businessName/address are available via settings at PDF generation time
             },
           ],
           { session: dbSession }
@@ -229,6 +239,29 @@ export async function POST(req: NextRequest) {
 
     if (!order) {
       return NextResponse.json({ error: "Order creation failed" }, { status: 500 });
+    }
+
+    // Fire-and-forget notifications
+    if (requiresApproval) {
+      // Notify all admins that a high-value order needs approval
+      notify({
+        userId: "admin",
+        role: "admin",
+        type: "order_created",
+        title: "Order Requires Approval",
+        message: `Order ${orderNumber} from ${customerName.trim()} totals ₹${totalAmount.toFixed(2)} and needs your approval.`,
+        link: "/orders",
+      });
+    } else {
+      // Notify admins of new auto-confirmed order
+      notify({
+        userId: "admin",
+        role: "admin",
+        type: "order_created",
+        title: "New Order Confirmed",
+        message: `Order ${orderNumber} from ${customerName.trim()} (₹${totalAmount.toFixed(2)}) was auto-confirmed.`,
+        link: "/orders",
+      });
     }
 
     // Fire-and-forget audit log
@@ -256,7 +289,13 @@ export async function POST(req: NextRequest) {
       businessAddress: settings.businessAddress ?? "",
     });
 
-    return NextResponse.json({ order }, { status: 201 });
+    return NextResponse.json({
+      order,
+      requiresApproval,
+      message: requiresApproval
+        ? `Order ${orderNumber} submitted for admin approval (total ≥ ₹15,000). Stock will be reserved once approved.`
+        : `Order ${orderNumber} confirmed automatically.`,
+    }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/orders]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -6,7 +6,7 @@ import { Product } from "@/models/Product";
 import { auth } from "../../../../auth";
 
 // ─── GET /api/dashboard ───────────────────────────────────────────────────────
-// All roles — aggregated dashboard data (admin gets full view, staff gets task-focused view)
+// All roles — admin gets today-focused view, staff gets task-focused view
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -20,8 +20,6 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
@@ -30,20 +28,16 @@ export async function GET(req: NextRequest) {
       const [
         todayRevenueResult,
         pendingOrderCount,
-        lowStockProducts,
+        allProducts,
         recentlySoldProducts,
         recentOrders,
       ] = await Promise.all([
-        // Today's confirmed revenue
         Invoice.aggregate([
           { $match: { status: "issued", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
           { $group: { _id: null, total: { $sum: "$totalAmount" } } },
         ]),
-        // Pending orders count
         Order.countDocuments({ status: "pending" }),
-        // Low stock products
         Product.find({}).lean(),
-        // Recently sold products (from confirmed orders today)
         Order.aggregate([
           { $match: { status: "confirmed", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
           { $unwind: "$items" },
@@ -51,11 +45,10 @@ export async function GET(req: NextRequest) {
           { $sort: { totalQty: -1 } },
           { $limit: 8 },
         ]),
-        // Recent orders (last 10)
         Order.find({}).sort({ createdAt: -1 }).limit(10).lean(),
       ]);
 
-      const lowStockList = lowStockProducts.filter((p) => p.quantity <= p.lowStockThreshold);
+      const lowStockList = allProducts.filter((p) => p.quantity <= p.lowStockThreshold);
 
       return NextResponse.json({
         role: "staff",
@@ -72,101 +65,47 @@ export async function GET(req: NextRequest) {
 
     // ── Admin dashboard ────────────────────────────────────────────────────────
 
-    // ── Stat cards ────────────────────────────────────────────────────────────
-
     const [
-      monthlyRevenueResult,
-      monthlyOrderCount,
-      activeProductCount,
-      lowStockProducts,
+      todayRevenueResult,
+      todayOrderCount,
+      pendingApprovalCount,
+      allProducts,
       recentOrders,
+      topProducts,
     ] = await Promise.all([
-      // Total revenue from confirmed invoices this month
+      // Today's revenue from confirmed invoices
       Invoice.aggregate([
-        {
-          $match: {
-            status: "issued",
-            createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-          },
-        },
+        { $match: { status: "issued", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]),
-
-      // Confirmed orders this month
-      Order.countDocuments({
-        status: "confirmed",
-        createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-      }),
-
-      // Active (all) products count
-      Product.countDocuments({}),
-
-      // Low-stock products
+      // Today's confirmed orders
+      Order.countDocuments({ status: "confirmed", createdAt: { $gte: startOfToday, $lte: endOfToday } }),
+      // Orders pending admin approval (high-value ≥ ₹15,000)
+      Order.countDocuments({ status: "pending", requiresApproval: true }),
+      // All products for low-stock check
       Product.find({}).lean(),
-
       // 10 most recent orders
-      Order.find({})
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .populate("createdBy", "name")
-        .lean(),
+      Order.find({}).sort({ createdAt: -1 }).limit(10).populate("createdBy", "name").lean(),
+      // Top 5 products by qty sold (all time)
+      Order.aggregate([
+        { $match: { status: "confirmed" } },
+        { $unwind: "$items" },
+        { $group: { _id: "$items.productId", productName: { $first: "$items.productName" }, sku: { $first: "$items.sku" }, totalQty: { $sum: "$items.quantity" }, totalRevenue: { $sum: "$items.lineTotal" } } },
+        { $sort: { totalQty: -1 } },
+        { $limit: 5 },
+      ]),
     ]);
 
-    const totalRevenue = monthlyRevenueResult[0]?.total ?? 0;
-
-    // Filter low-stock using virtual logic
-    const lowStockList = lowStockProducts.filter(
-      (p) => p.quantity <= p.lowStockThreshold
-    );
-
-    // ── Daily revenue chart (current month) ───────────────────────────────────
-
-    const dailyRevenue = await Invoice.aggregate([
-      {
-        $match: {
-          status: "issued",
-          createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-          },
-          revenue: { $sum: "$totalAmount" },
-          orders: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-
-    // ── Top 5 products by quantity sold (all time, confirmed orders) ──────────
-
-    const topProducts = await Order.aggregate([
-      { $match: { status: "confirmed" } },
-      { $unwind: "$items" },
-      {
-        $group: {
-          _id: "$items.productId",
-          productName: { $first: "$items.productName" },
-          sku: { $first: "$items.sku" },
-          totalQty: { $sum: "$items.quantity" },
-          totalRevenue: { $sum: "$items.lineTotal" },
-        },
-      },
-      { $sort: { totalQty: -1 } },
-      { $limit: 5 },
-    ]);
+    const lowStockList = allProducts.filter((p) => p.quantity <= p.lowStockThreshold);
 
     return NextResponse.json({
       role: "admin",
       stats: {
-        totalRevenue,
-        totalOrders: monthlyOrderCount,
-        totalProducts: activeProductCount,
+        todayRevenue: todayRevenueResult[0]?.total ?? 0,
+        todayOrders: todayOrderCount,
+        pendingApprovals: pendingApprovalCount,
         lowStockCount: lowStockList.length,
       },
-      dailyRevenue,
       topProducts,
       recentOrders,
       lowStockProducts: lowStockList.slice(0, 10),

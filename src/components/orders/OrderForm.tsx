@@ -236,7 +236,12 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       });
       const json = await res.json();
       if (!res.ok) { toast.error(json.error ?? "Failed to create order"); return; }
-      toast.success(`Order ${json.order.orderNumber} created`);
+
+      if (json.requiresApproval) {
+        toast.warning(`Order submitted for admin approval — total ≥ ₹15,000. Stock will be reserved once approved.`, { duration: 6000 });
+      } else {
+        toast.success(`Order ${json.order.orderNumber} confirmed automatically.`);
+      }
 
       // Broadcast to admin dashboard (same-origin tabs via BroadcastChannel)
       try {

@@ -20,6 +20,7 @@ import type { IOrder } from "@/types";
 
 type OrderRow = Omit<IOrder, "_id" | "createdBy"> & {
   _id: string;
+  requiresApproval?: boolean;
   createdBy: { name?: string; email?: string } | string;
 };
 
@@ -96,7 +97,19 @@ export default function OrdersPage() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => {
+        const o = row.original;
+        return (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <StatusBadge status={o.status} />
+            {o.requiresApproval && o.status === "pending" && (
+              <span className="inline-flex items-center rounded-full border border-warning/30 bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
+                Needs Approval
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "totalAmount",

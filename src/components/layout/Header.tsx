@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { Moon, Sun, LogOut, User, Menu } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "./NotificationBell";
 
 interface HeaderProps {
   user: {
@@ -60,7 +61,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
       {/* Spacer on desktop (hamburger hidden, push right-side controls to end) */}
       <div className="hidden md:flex flex-1" />
 
-      {/* Right: theme toggle + user menu */}
+      {/* Right: theme toggle + notification bell + user menu */}
       <div className="flex items-center gap-2">
         {/* Theme toggle */}
         <button
@@ -75,6 +76,9 @@ export function Header({ user, onMenuClick }: HeaderProps) {
           <Sun className="size-4 hidden dark:block" aria-hidden="true" />
           <Moon className="size-4 block dark:hidden" aria-hidden="true" />
         </button>
+
+        {/* Notification bell */}
+        <NotificationBell />
 
         {/* User menu */}
         <div className="relative" ref={menuRef}>

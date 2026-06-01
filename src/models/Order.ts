@@ -29,6 +29,7 @@ const orderSchema = new Schema<IOrder>(
     },
     customerName: { type: String, required: true, trim: true, maxlength: 200 },
     customerEmail: { type: String, trim: true, lowercase: true },
+    requiresApproval: { type: Boolean, default: false },
     notes: { type: String },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },

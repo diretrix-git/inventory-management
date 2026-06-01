@@ -57,6 +57,7 @@ export interface IOrder {
   taxAmount: number;
   totalAmount: number;
   status: "pending" | "confirmed" | "cancelled";
+  requiresApproval: boolean;
   customerName: string;
   customerEmail?: string;
   notes?: string;

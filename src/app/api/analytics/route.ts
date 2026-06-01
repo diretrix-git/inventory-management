@@ -4,7 +4,7 @@ import { Order } from "@/models/Order";
 import { requireRole } from "@/lib/auth-utils";
 
 // ─── GET /api/analytics ───────────────────────────────────────────────────────
-// Admin only — date-range analytics from confirmed orders
+// Admin only — comprehensive analytics
 
 export async function GET(req: NextRequest) {
   const authResult = await requireRole(req, ["admin"]);
@@ -21,24 +21,63 @@ export async function GET(req: NextRequest) {
   let startDate = new Date(searchParams.get("startDate") ?? defaultStart.toISOString());
   let endDate = new Date(searchParams.get("endDate") ?? now.toISOString());
 
-  // Reject future end dates
   if (endDate > now) endDate = now;
   if (startDate > now) startDate = defaultStart;
-
   endDate.setHours(23, 59, 59, 999);
+
+  // Monthly revenue: last 12 months
+  const twelveMonthsAgo = new Date(now);
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+  twelveMonthsAgo.setDate(1);
+  twelveMonthsAgo.setHours(0, 0, 0, 0);
+
+  // Weekly trend: last 7 days
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
 
   try {
     await connectDB();
 
     const matchStage = {
-      status: "confirmed",
+      status: "confirmed" as const,
       createdAt: { $gte: startDate, $lte: endDate },
     };
 
-    const [dailyData, categoryData, topProducts] = await Promise.all([
-      // Daily revenue + orders
+    const [monthlyRevenue, topProducts, weeklyTrend, categoryData] = await Promise.all([
+      // Monthly Revenue Chart — last 12 months
+      Order.aggregate([
+        { $match: { status: "confirmed", createdAt: { $gte: twelveMonthsAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+            revenue: { $sum: "$totalAmount" },
+            orders: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+
+      // Top Selling Products — by revenue in date range
       Order.aggregate([
         { $match: matchStage },
+        { $unwind: "$items" },
+        {
+          $group: {
+            _id: "$items.productId",
+            productName: { $first: "$items.productName" },
+            sku: { $first: "$items.sku" },
+            totalRevenue: { $sum: "$items.lineTotal" },
+            totalQty: { $sum: "$items.quantity" },
+          },
+        },
+        { $sort: { totalRevenue: -1 } },
+        { $limit: 10 },
+      ]),
+
+      // Weekly Sales Trend — last 7 days, daily
+      Order.aggregate([
+        { $match: { status: "confirmed", createdAt: { $gte: sevenDaysAgo } } },
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -49,7 +88,7 @@ export async function GET(req: NextRequest) {
         { $sort: { _id: 1 } },
       ]),
 
-      // Category breakdown
+      // Category Performance — revenue by category in date range
       Order.aggregate([
         { $match: matchStage },
         { $unwind: "$items" },
@@ -67,45 +106,36 @@ export async function GET(req: NextRequest) {
             _id: { $ifNull: ["$product.category", "Uncategorized"] },
             revenue: { $sum: "$items.lineTotal" },
             units: { $sum: "$items.quantity" },
+            orders: { $sum: 1 },
           },
         },
         { $sort: { revenue: -1 } },
-      ]),
-
-      // Top 10 products by confirmed revenue
-      Order.aggregate([
-        { $match: matchStage },
-        { $unwind: "$items" },
-        {
-          $group: {
-            _id: "$items.productId",
-            productName: { $first: "$items.productName" },
-            sku: { $first: "$items.sku" },
-            totalRevenue: { $sum: "$items.lineTotal" },
-            totalQty: { $sum: "$items.quantity" },
-          },
-        },
-        { $sort: { totalRevenue: -1 } },
-        { $limit: 10 },
       ]),
     ]);
 
     // Compute category percentages
     const totalRevenue = categoryData.reduce((s: number, c: { revenue: number }) => s + c.revenue, 0);
-    const categoryBreakdown = categoryData.map((c: { _id: string; revenue: number; units: number }) => ({
+    const categoryBreakdown = categoryData.map((c: { _id: string; revenue: number; units: number; orders: number }) => ({
       ...c,
       percentage: totalRevenue > 0 ? Math.round((c.revenue / totalRevenue) * 10000) / 100 : 0,
     }));
 
+    // Summary for date range
+    const rangeSummary = await Order.aggregate([
+      { $match: matchStage },
+      { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" }, totalOrders: { $sum: 1 } } },
+    ]);
+
     return NextResponse.json({
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
-      dailyData,
-      categoryBreakdown,
+      monthlyRevenue,
       topProducts,
+      weeklyTrend,
+      categoryBreakdown,
       summary: {
-        totalRevenue,
-        totalOrders: dailyData.reduce((s: number, d: { orders: number }) => s + d.orders, 0),
+        totalRevenue: rangeSummary[0]?.totalRevenue ?? 0,
+        totalOrders: rangeSummary[0]?.totalOrders ?? 0,
       },
     });
   } catch (err) {

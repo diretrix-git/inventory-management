@@ -5,6 +5,7 @@ import { Order } from "@/models/Order";
 import { Product } from "@/models/Product";
 import { requireRole } from "@/lib/auth-utils";
 import { logAction } from "@/lib/audit";
+import { notify } from "@/lib/notify";
 import { auth } from "../../../../../auth";
 
 // ─── GET /api/orders/[id] ─────────────────────────────────────────────────────
@@ -77,16 +78,14 @@ export async function PUT(
 
   const { status: newStatus } = parsed.data;
 
-  // Cancellation requires Admin role
+  // Cancellation requires Admin role; confirmation also requires Admin for high-value orders
   if (newStatus === "cancelled") {
     const authResult = await requireRole(req, ["admin"]);
     if (authResult.response) return authResult.response;
   } else {
-    // Confirmation — any authenticated user
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Confirmation — require admin (they're approving the order)
+    const authResult = await requireRole(req, ["admin"]);
+    if (authResult.response) return authResult.response;
   }
 
   // Re-fetch session for audit log
@@ -118,14 +117,51 @@ export async function PUT(
     order.status = newStatus;
     await order.save();
 
-    // Restore stock on cancellation of a confirmed order
-    if (newStatus === "cancelled" && currentStatus === "confirmed") {
+    // When admin confirms a high-value order (requiresApproval=true), deduct stock NOW
+    if (newStatus === "confirmed" && (order as unknown as { requiresApproval?: boolean }).requiresApproval) {
       for (const item of order.items) {
         await Product.findByIdAndUpdate(item.productId, {
-          $inc: { quantity: item.quantity },
+          $inc: { quantity: -item.quantity },
         });
       }
-
+      // Notify the order creator that their order was approved
+      notify({
+        userId: String(order.createdBy),
+        role: "staff",
+        type: "order_approved",
+        title: "Order Approved",
+        message: `Your order ${order.orderNumber} (₹${order.totalAmount.toFixed(2)}) has been approved and stock has been reserved.`,
+        link: "/orders",
+      });
+      logAction({
+        userId: session.user.id,
+        userName: session.user.name ?? "Unknown",
+        action: "order.approved",
+        targetModel: "Order",
+        targetId: order._id.toString(),
+        details: { orderNumber: order.orderNumber, totalAmount: order.totalAmount },
+      });
+    }
+    // Restore stock on cancellation of a confirmed order (stock was already deducted)
+    else if (newStatus === "cancelled" && currentStatus === "confirmed") {
+      const wasStockDeducted = !(order as unknown as { requiresApproval?: boolean }).requiresApproval
+        || currentStatus === "confirmed";
+      if (wasStockDeducted) {
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.productId, {
+            $inc: { quantity: item.quantity },
+          });
+        }
+      }
+      // Notify the order creator of cancellation
+      notify({
+        userId: String(order.createdBy),
+        role: "staff",
+        type: "order_cancelled",
+        title: "Order Cancelled",
+        message: `Order ${order.orderNumber} has been cancelled.`,
+        link: "/orders",
+      });
       logAction({
         userId: session.user.id,
         userName: session.user.name ?? "Unknown",

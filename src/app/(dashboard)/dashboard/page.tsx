@@ -2,10 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import {
-  AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts";
 import { toast } from "sonner";
 import {
   TrendingUp, ShoppingCart, Package, AlertTriangle,
@@ -25,8 +21,7 @@ import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 
 interface AdminDashboardData {
   role: "admin";
-  stats: { totalRevenue: number; totalOrders: number; totalProducts: number; lowStockCount: number };
-  dailyRevenue: { _id: string; revenue: number; orders: number }[];
+  stats: { todayRevenue: number; todayOrders: number; pendingApprovals: number; lowStockCount: number };
   topProducts: { _id: string; productName: string; sku: string; totalQty: number }[];
   recentOrders: { _id: string; orderNumber: string; customerName: string; status: string; totalAmount: number; createdAt: string }[];
   lowStockProducts: { _id: string; name: string; sku: string; quantity: number; lowStockThreshold: number }[];
@@ -177,60 +172,61 @@ function AdminDashboard({ data, isLoading }: { data: AdminDashboardData | null; 
 
   return (
     <>
-      <PageHeader title="Dashboard" description="Overview for this month." />
+      <PageHeader title="Dashboard" description={`Today — ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`} />
 
+      {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
-        <StatCard title="Monthly Revenue" value={isLoading ? 0 : (data?.stats.totalRevenue ?? 0)} prefix="$" formatValue={(v) => v.toFixed(2)} icon={TrendingUp} description="Confirmed invoices this month" />
-        <StatCard title="Confirmed Orders" value={isLoading ? 0 : (data?.stats.totalOrders ?? 0)} icon={ShoppingCart} description="This month" />
-        <StatCard title="Total Products" value={isLoading ? 0 : (data?.stats.totalProducts ?? 0)} icon={Package} description="In catalog" />
-        <StatCard title="Low Stock" value={isLoading ? 0 : (data?.stats.lowStockCount ?? 0)} icon={AlertTriangle} description="Products below threshold" />
+        <StatCard
+          title="Today's Revenue"
+          value={isLoading ? 0 : (data?.stats.todayRevenue ?? 0)}
+          prefix="$"
+          formatValue={(v) => v.toFixed(2)}
+          icon={TrendingUp}
+          description="Confirmed invoices today"
+        />
+        <StatCard
+          title="Today's Orders"
+          value={isLoading ? 0 : (data?.stats.todayOrders ?? 0)}
+          icon={ShoppingCart}
+          description="Confirmed today"
+        />
+        <StatCard
+          title="Pending Approvals"
+          value={isLoading ? 0 : (data?.stats.pendingApprovals ?? 0)}
+          icon={Clock}
+          description="High-value orders awaiting approval"
+        />
+        <StatCard
+          title="Low Stock Items"
+          value={isLoading ? 0 : (data?.stats.lowStockCount ?? 0)}
+          icon={AlertTriangle}
+          description="Products below threshold"
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 mb-6">
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Daily Revenue — This Month</h2>
-          {!isLoading && (data?.dailyRevenue.length ?? 0) === 0 ? (
-            <EmptyState title="No revenue data" description="No confirmed invoices this month yet." className="py-10" />
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={data?.dailyRevenue ?? []} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#185FA5" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#185FA5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="_id" tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--color-muted-foreground)" }} tickFormatter={(v: string) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--color-muted-foreground)" }} tickFormatter={(v: number) => `$${v}`} />
-                <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]} />
-                <Area type="monotone" dataKey="revenue" stroke="#185FA5" strokeWidth={2} fill="url(#revenueGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
+      {/* Pending approvals alert */}
+      {!isLoading && (data?.stats.pendingApprovals ?? 0) > 0 && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3">
+          <Clock className="size-5 text-warning flex-shrink-0" aria-hidden="true" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {data!.stats.pendingApprovals} order{data!.stats.pendingApprovals > 1 ? "s" : ""} waiting for your approval
+            </p>
+            <p className="text-xs text-muted-foreground">These are high-value orders (≥ ₹15,000) that need admin confirmation before stock is reserved.</p>
+          </div>
+          <Link href="/orders" className="flex-shrink-0 text-xs font-medium text-primary hover:underline">
+            Review orders →
+          </Link>
         </div>
-
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Top 5 Products by Qty Sold</h2>
-          {!isLoading && (data?.topProducts.length ?? 0) === 0 ? (
-            <EmptyState title="No sales data" description="No confirmed orders yet." className="py-10" />
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={data?.topProducts ?? []} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--color-muted-foreground)" }} />
-                <YAxis type="category" dataKey="productName" width={80} tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickFormatter={(v: string) => v.length > 10 ? v.slice(0, 10) + "…" : v} />
-                <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [v, "Units sold"]} />
-                <Bar dataKey="totalQty" fill="#185FA5" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Recent orders */}
         <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Recent Orders</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground">Recent Orders</h2>
+            <Link href="/orders" className="text-xs text-primary hover:underline">View all</Link>
+          </div>
           {!isLoading && (data?.recentOrders.length ?? 0) === 0 ? (
             <EmptyState title="No orders yet" description="Orders will appear here once created." className="py-8" />
           ) : (
@@ -251,8 +247,12 @@ function AdminDashboard({ data, isLoading }: { data: AdminDashboardData | null; 
           )}
         </div>
 
+        {/* Low stock alerts */}
         <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Low Stock Alerts</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground">Low Stock Alerts</h2>
+            <Link href="/products" className="text-xs text-primary hover:underline">View products</Link>
+          </div>
           {!isLoading && (data?.lowStockProducts.length ?? 0) === 0 ? (
             <EmptyState title="All stocked up" description="No products are below their low-stock threshold." icon={Package} className="py-8" />
           ) : (
