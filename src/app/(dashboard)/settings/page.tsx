@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import { Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -63,7 +64,7 @@ export default function SettingsPage() {
           });
         }
       })
-      .catch(() => toast.error("Failed to load settings"))
+      .catch(() => toast.error("Could not load settings. Please refresh the page."))
       .finally(() => setIsLoadingSettings(false));
   }, [reset]);
 
@@ -76,7 +77,7 @@ export default function SettingsPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        toast.error(json.error ?? "Failed to save settings");
+        toast.error(friendlyError(json.error));
         return;
       }
       toast.success("Settings saved");

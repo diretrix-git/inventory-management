@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
@@ -55,7 +55,7 @@ export default function CategoriesPage() {
       }
       setProductCounts(counts);
     } catch {
-      toast.error("Failed to load categories");
+      toast.error("Could not load categories. Please refresh the page.");
     } finally {
       setIsLoading(false);
     }

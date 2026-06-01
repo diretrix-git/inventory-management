@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -23,10 +24,10 @@ export default function AuditLogsPage() {
     try {
       const res = await fetch("/api/audit-logs?limit=100", { cache: "no-store" });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to load audit logs"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
       setLogs((json.logs as LogRow[]).map((l) => ({ ...l, _id: String(l._id) })));
     } catch {
-      toast.error("Network error");
+      toast.error("Connection error. Please check your internet and try again.");
     } finally {
       setIsLoading(false);
     }

@@ -49,7 +49,7 @@ export default function OrdersPage() {
     setIsLoading(true);
     try {
       const res = await fetch("/api/orders?limit=100", { cache: "no-store" });
-      if (!res.ok) { toast.error("Failed to load orders"); return; }
+      if (!res.ok) { toast.error("Could not load orders. Please refresh the page."); return; }
       const json = await res.json();
       setOrders((json.orders as OrderRow[]).map((o) => ({ ...o, _id: String(o._id) })));
     } catch {

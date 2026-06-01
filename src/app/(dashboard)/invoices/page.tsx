@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import { Download, Loader2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -32,7 +33,7 @@ export default function InvoicesPage() {
     setIsLoading(true);
     try {
       const res = await fetch("/api/invoices?limit=100", { cache: "no-store" });
-      if (!res.ok) { toast.error("Failed to load invoices"); return; }
+      if (!res.ok) { toast.error("Could not load invoices. Please refresh the page."); return; }
       const json = await res.json();
       setInvoices((json.invoices as InvoiceRow[]).map((i) => ({ ...i, _id: String(i._id) })));
     } catch {
@@ -50,7 +51,7 @@ export default function InvoicesPage() {
       const res = await fetch(`/api/invoices/${invoice._id}/pdf`);
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        toast.error(json.error ?? "Failed to generate PDF");
+        toast.error(friendlyError(json.error));
         return;
       }
       const blob = await res.blob();

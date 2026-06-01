@@ -1,10 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
+
 import { Plus, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -85,7 +87,7 @@ function SupplierSheet({ open, onClose, editSupplier, onSuccess }: SupplierSheet
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Something went wrong"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
       toast.success(isEdit ? "Supplier updated" : "Supplier created");
       onSuccess();
       onClose();
@@ -166,11 +168,11 @@ export default function SuppliersPage() {
     setIsLoading(true);
     try {
       const res = await fetch("/api/suppliers", { cache: "no-store" });
-      if (!res.ok) { toast.error("Failed to load suppliers"); return; }
+      if (!res.ok) { toast.error("Could not load suppliers. Please refresh the page."); return; }
       const json = await res.json();
       setSuppliers((json.suppliers as SupplierRow[]).map((s) => ({ ...s, _id: String(s._id) })));
     } catch {
-      toast.error("Network error — could not load suppliers");
+      toast.error("Could not load suppliers. Please refresh the page.");
     } finally {
       setIsLoading(false);
     }
@@ -184,7 +186,7 @@ export default function SuppliersPage() {
     try {
       const res = await fetch(`/api/suppliers/${deleteTarget._id}`, { method: "DELETE" });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to delete supplier"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
       toast.success("Supplier deleted");
       setDeleteTarget(null);
       await fetchSuppliers();

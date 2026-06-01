@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import { Download } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PageTransition } from "@/components/shared/PageTransition";
@@ -31,11 +32,11 @@ export default function InventoryReportPage() {
     try {
       const res = await fetch("/api/inventory-report");
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to load report"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
       setProducts((json.products as ProductReport[]).map((p) => ({ ...p, _id: String(p._id) })));
       setTotalValue(json.totalInventoryValue as number);
     } catch {
-      toast.error("Network error");
+      toast.error("Connection error. Please check your internet and try again.");
     } finally {
       setIsLoading(false);
     }

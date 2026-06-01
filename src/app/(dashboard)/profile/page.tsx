@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -120,7 +121,7 @@ function UpdateNameForm({ currentName, onSuccess }: { currentName: string; onSuc
       const json = await res.json();
 
       if (!res.ok) {
-        toast.error(json.error ?? "Failed to update name");
+        toast.error(friendlyError(json.error));
         return;
       }
 
@@ -193,7 +194,7 @@ function ChangePasswordForm() {
       const json = await res.json();
 
       if (!res.ok) {
-        toast.error(json.error ?? "Failed to change password");
+        toast.error(friendlyError(json.error));
         return;
       }
 
@@ -294,7 +295,7 @@ export default function ProfilePage() {
         body: JSON.stringify({ image: url }),
       });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to update avatar"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
       toast.success("Profile photo updated");
       await update({ image: url });
     } catch {

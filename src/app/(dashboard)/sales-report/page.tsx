@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import { Download } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PageTransition } from "@/components/shared/PageTransition";
@@ -51,11 +52,11 @@ export default function SalesReportPage() {
     try {
       const res = await fetch(`/api/sales-report?startDate=${startDate}&endDate=${endDate}`);
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to load report"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
       setSummary(json.summary as SalesSummary);
       setOrders((json.orders as OrderRow[]).map((o) => ({ ...o, _id: String(o._id) })));
     } catch {
-      toast.error("Network error");
+      toast.error("Connection error. Please check your internet and try again.");
     } finally {
       setIsLoading(false);
     }

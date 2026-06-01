@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import {
   TrendingUp, ShoppingCart, Package, AlertTriangle,
   Clock, CheckCircle, Plus, Eye,
@@ -289,10 +290,10 @@ export default function DashboardPage() {
     fetch("/api/dashboard", { cache: "no-store" })
       .then((r) => r.json())
       .then((json) => {
-        if (json.error) { toast.error(json.error); return; }
+        if (json.error) { toast.error(friendlyError(json.error)); return; }
         setData(json as DashboardData);
       })
-      .catch(() => toast.error("Failed to load dashboard data"))
+      .catch(() => toast.error("Could not load dashboard data. Please refresh the page."))
       .finally(() => setIsLoading(false));
   }, []);
 

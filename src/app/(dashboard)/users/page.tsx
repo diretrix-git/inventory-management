@@ -1,10 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
+
 import { Plus, Pencil, UserX, UserCheck, X, Loader2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -114,7 +116,7 @@ function UserSheet({ open, onClose, editUser, onSuccess }: UserSheetProps) {
       const json = await res.json();
 
       if (!res.ok) {
-        toast.error(json.error ?? "Something went wrong");
+        toast.error(friendlyError(json.error));
         return;
       }
 
@@ -314,7 +316,7 @@ export default function UsersPage() {
       const res = await fetch("/api/users?limit=200", { cache: "no-store" });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        toast.error(json.error ?? "Failed to load users");
+        toast.error(friendlyError(json.error));
         return;
       }
       const json = await res.json();
@@ -363,7 +365,7 @@ export default function UsersPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        toast.error(json.error ?? "Failed to update user");
+        toast.error(friendlyError(json.error));
         return;
       }
       toast.success(

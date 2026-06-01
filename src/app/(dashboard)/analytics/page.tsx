@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -82,10 +83,10 @@ export default function AnalyticsPage() {
     try {
       const res = await fetch(`/api/analytics?startDate=${startDate}&endDate=${endDate}`);
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to load analytics"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
       setData(json as AnalyticsData);
     } catch {
-      toast.error("Network error");
+      toast.error("Connection error. Please check your internet and try again.");
     } finally {
       setIsLoading(false);
     }
