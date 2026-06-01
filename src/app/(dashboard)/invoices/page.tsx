@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
@@ -95,7 +95,7 @@ export default function InvoicesPage() {
       accessorKey: "totalAmount",
       header: "Total",
       cell: ({ row }) => (
-        <span className="font-mono text-sm tabular-nums">${row.original.totalAmount.toFixed(2)}</span>
+        <span className="font-mono text-sm tabular-nums">Rs {row.original.totalAmount.toFixed(2)}</span>
       ),
     },
     {
@@ -235,9 +235,9 @@ export default function InvoicesPage() {
                       </div>
                       <div className="text-right flex-shrink-0 ml-3">
                         <p className="font-mono text-xs text-muted-foreground">
-                          ×{item.quantity} @ ${item.unitPrice.toFixed(2)}
+                          ×{item.quantity} @ Rs {item.unitPrice.toFixed(2)}
                         </p>
-                        <p className="font-mono text-sm font-semibold">${item.lineTotal.toFixed(2)}</p>
+                        <p className="font-mono text-sm font-semibold">Rs {item.lineTotal.toFixed(2)}</p>
                       </div>
                     </div>
                   ))}
@@ -249,15 +249,15 @@ export default function InvoicesPage() {
             <div className="rounded-lg border border-border bg-muted/40 px-3 py-3 flex flex-col gap-1.5 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span className="font-mono tabular-nums">${viewInvoice.subtotal.toFixed(2)}</span>
+                <span className="font-mono tabular-nums">Rs {viewInvoice.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Tax ({viewInvoice.taxRate}%)</span>
-                <span className="font-mono tabular-nums">${viewInvoice.taxAmount.toFixed(2)}</span>
+                <span className="font-mono tabular-nums">Rs {viewInvoice.taxAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1.5 mt-0.5">
                 <span>Total</span>
-                <span className="font-mono tabular-nums">${viewInvoice.totalAmount.toFixed(2)}</span>
+                <span className="font-mono tabular-nums">Rs {viewInvoice.totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>

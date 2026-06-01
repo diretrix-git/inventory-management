@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRole } from "@/components/providers/RoleProvider";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 import type { IProduct } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
 
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Something went wrong"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
       toast.success(isEdit ? "Product updated" : "Product created");
       onSuccess();
       onClose();
@@ -243,7 +244,7 @@ export default function ProductsPage() {
       ]);
       if (!prodRes.ok) {
         const json = await prodRes.json().catch(() => ({}));
-        setFetchError(json.error ?? "Failed to load products");
+        setFetchError(friendlyError(json.error));
         return;
       }
       const prodJson = await prodRes.json();
@@ -272,15 +273,14 @@ export default function ProductsPage() {
       const res = await fetch(`/api/products/${deleteTarget._id}`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) {
-        // Critical error — show modal instead of toast
-        setDeleteError(json.error ?? "Failed to delete product");
+        setDeleteError(friendlyError(json.error));
         return;
       }
       toast.success("Product deleted");
       setDeleteTarget(null);
       await fetchProducts();
     } catch {
-      setDeleteError("Network error — could not delete product. Please try again.");
+      setDeleteError(friendlyError("network"));
     } finally {
       setIsDeleting(false);
     }
@@ -362,7 +362,7 @@ export default function ProductsPage() {
     {
       accessorKey: "price",
       header: "Unit Price",
-      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">${row.original.price.toFixed(2)}</span>,
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">Rs {row.original.price.toFixed(2)}</span>,
     },
     {
       accessorKey: "quantity",
@@ -571,7 +571,7 @@ export default function ProductsPage() {
               <div><p className="text-xs text-muted-foreground mb-0.5">Name</p><p className="font-medium">{viewProduct.name}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">SKU</p><p className="font-mono">{viewProduct.sku}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Category</p><p>{viewProduct.category ?? "—"}</p></div>
-              <div><p className="text-xs text-muted-foreground mb-0.5">Price</p><p className="font-mono">${viewProduct.price.toFixed(2)}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Price</p><p className="font-mono">Rs {viewProduct.price.toFixed(2)}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Stock</p><p className="font-mono">{viewProduct.quantity}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Low Stock Threshold</p><p className="font-mono">{viewProduct.lowStockThreshold}</p></div>
               <div className="col-span-2">

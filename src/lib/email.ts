@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+﻿import nodemailer from "nodemailer";
 
 // ─── Transporter ─────────────────────────────────────────────────────────────
 // Uses Gmail SMTP with App Password (not your regular Gmail password).
@@ -46,8 +46,8 @@ function orderConfirmationHtml(data: OrderEmailData): string {
       <td style="padding:8px 12px;border-bottom:1px solid #e4e4e7;">${item.productName}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e4e4e7;font-family:monospace;">${item.sku}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e4e4e7;text-align:center;">${item.quantity}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e4e4e7;text-align:right;font-family:monospace;">$${item.unitPrice.toFixed(2)}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e4e4e7;text-align:right;font-family:monospace;">$${item.lineTotal.toFixed(2)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e4e4e7;text-align:right;font-family:monospace;">$Rs {item.unitPrice.toFixed(2)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e4e4e7;text-align:right;font-family:monospace;">$Rs {item.lineTotal.toFixed(2)}</td>
     </tr>
   `).join("");
 
@@ -99,15 +99,15 @@ function orderConfirmationHtml(data: OrderEmailData): string {
       <div style="border-top:2px solid #e4e4e7;padding-top:16px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
           <span style="font-size:13px;color:#71717a;">Subtotal</span>
-          <span style="font-size:13px;font-family:monospace;">$${data.subtotal.toFixed(2)}</span>
+          <span style="font-size:13px;font-family:monospace;">$Rs {data.subtotal.toFixed(2)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
           <span style="font-size:13px;color:#71717a;">Tax (${data.taxRate}%)</span>
-          <span style="font-size:13px;font-family:monospace;">$${data.taxAmount.toFixed(2)}</span>
+          <span style="font-size:13px;font-family:monospace;">$Rs {data.taxAmount.toFixed(2)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;">
           <span style="font-size:15px;font-weight:600;color:#18181b;">Total</span>
-          <span style="font-size:15px;font-weight:600;font-family:monospace;color:#18181b;">$${data.totalAmount.toFixed(2)}</span>
+          <span style="font-size:15px;font-weight:600;font-family:monospace;color:#18181b;">$Rs {data.totalAmount.toFixed(2)}</span>
         </div>
       </div>
     </div>
@@ -141,7 +141,7 @@ function adminNotificationHtml(data: OrderEmailData): string {
       <p style="margin:0 0 6px;font-size:13px;"><strong>Order:</strong> <span style="font-family:monospace;">${data.orderNumber}</span></p>
       <p style="margin:0 0 6px;font-size:13px;"><strong>Customer:</strong> ${data.customerName}</p>
       ${data.customerEmail ? `<p style="margin:0 0 6px;font-size:13px;"><strong>Email:</strong> ${data.customerEmail}</p>` : ""}
-      <p style="margin:0;font-size:13px;"><strong>Total:</strong> <span style="font-family:monospace;font-weight:600;">$${data.totalAmount.toFixed(2)}</span></p>
+      <p style="margin:0;font-size:13px;"><strong>Total:</strong> <span style="font-family:monospace;font-weight:600;">$Rs {data.totalAmount.toFixed(2)}</span></p>
     </div>
 
     <p style="margin:0;font-size:13px;color:#71717a;">
@@ -184,7 +184,7 @@ export async function sendOrderEmails(data: OrderEmailData): Promise<void> {
     transporter.sendMail({
       from,
       to: adminEmail,
-      subject: `New Order: ${data.orderNumber} — ${data.customerName} ($${data.totalAmount.toFixed(2)})`,
+      subject: `New Order: ${data.orderNumber} — ${data.customerName} ($Rs {data.totalAmount.toFixed(2)})`,
       html: adminNotificationHtml(data),
     }).catch((err) => console.error("[Email] Admin notification failed:", err))
   );

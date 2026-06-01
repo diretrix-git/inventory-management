@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { Order } from "@/models/Order";
@@ -249,7 +249,7 @@ export async function POST(req: NextRequest) {
         role: "admin",
         type: "order_created",
         title: "Order Requires Approval",
-        message: `Order ${orderNumber} from ${customerName.trim()} totals ₹${totalAmount.toFixed(2)} and needs your approval.`,
+        message: `Order ${orderNumber} from ${customerName.trim()} totals ₹Rs {totalAmount.toFixed(2)} and needs your approval.`,
         link: "/orders",
       });
     } else {
@@ -259,7 +259,7 @@ export async function POST(req: NextRequest) {
         role: "admin",
         type: "order_created",
         title: "New Order Confirmed",
-        message: `Order ${orderNumber} from ${customerName.trim()} (₹${totalAmount.toFixed(2)}) was auto-confirmed.`,
+        message: `Order ${orderNumber} from ${customerName.trim()} (₹Rs {totalAmount.toFixed(2)}) was auto-confirmed.`,
         link: "/orders",
       });
     }

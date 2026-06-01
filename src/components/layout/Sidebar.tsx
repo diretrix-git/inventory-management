@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -129,9 +129,15 @@ function NavContent({
 
 // ─── Desktop sidebar ──────────────────────────────────────────────────────────
 
-function DesktopSidebar({ role }: { role: Role }) {
-  const [expanded, setExpanded] = useState(true);
-
+function DesktopSidebar({
+  role,
+  expanded,
+  onToggle,
+}: {
+  role: Role;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
     <motion.aside
       animate={{ width: expanded ? 240 : 64 }}
@@ -144,12 +150,13 @@ function DesktopSidebar({ role }: { role: Role }) {
       {/* Toggle button */}
       <div className="flex-shrink-0 border-t border-sidebar-border p-2">
         <button
-          onClick={() => setExpanded((prev) => !prev)}
+          onClick={onToggle}
           className={cn(
             "flex items-center justify-center w-full rounded-md px-2 py-2 text-sm",
             "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
           )}
           aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
+          title={expanded ? "Collapse sidebar" : "Expand sidebar"}
         >
           {expanded ? (
             <span className="flex items-center gap-2">
@@ -260,12 +267,14 @@ interface SidebarProps {
   role: Role;
   mobileOpen: boolean;
   onMobileClose: () => void;
+  desktopExpanded: boolean;
+  onDesktopToggle: () => void;
 }
 
-export function Sidebar({ role, mobileOpen, onMobileClose }: SidebarProps) {
+export function Sidebar({ role, mobileOpen, onMobileClose, desktopExpanded, onDesktopToggle }: SidebarProps) {
   return (
     <>
-      <DesktopSidebar role={role} />
+      <DesktopSidebar role={role} expanded={desktopExpanded} onToggle={onDesktopToggle} />
       <MobileDrawer role={role} open={mobileOpen} onClose={onMobileClose} />
     </>
   );

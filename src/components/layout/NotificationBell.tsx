@@ -1,29 +1,40 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Bell, X, CheckCheck, ExternalLink } from "lucide-react";
+import { Bell, X, CheckCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { INotification } from "@/models/Notification";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type NotifRow = Omit<INotification, "_id"> & { _id: string };
 
 const TYPE_COLORS: Record<INotification["type"], string> = {
-  order_created: "bg-[#185FA5]/15 text-[#185FA5]",
-  order_approved: "bg-success/15 text-success",
-  order_cancelled: "bg-danger/15 text-danger",
-  low_stock: "bg-warning/15 text-warning",
-  info: "bg-muted text-muted-foreground",
+  order_created: "text-[#185FA5]",
+  order_approved: "text-success",
+  order_cancelled: "text-danger",
+  low_stock: "text-warning",
+  info: "text-muted-foreground",
+};
+
+const TYPE_DOT: Record<INotification["type"], string> = {
+  order_created: "bg-[#185FA5]",
+  order_approved: "bg-success",
+  order_cancelled: "bg-danger",
+  low_stock: "bg-warning",
+  info: "bg-muted-foreground",
 };
 
 export function NotificationBell() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // ── Fetch existing notifications ──────────────────────────────────────────
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -32,19 +43,41 @@ export function NotificationBell() {
       const data = await res.json();
       setNotifications((data.notifications as NotifRow[]).map((n) => ({ ...n, _id: String(n._id) })));
       setUnreadCount(data.unreadCount as number);
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
   }, []);
 
-  // Poll every 30 seconds for new notifications
+  // ── SSE connection for real-time pushes ───────────────────────────────────
+
   useEffect(() => {
     fetchNotifications();
-    pollRef.current = setInterval(fetchNotifications, 30000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+
+    // Connect to SSE stream
+    const es = new EventSource("/api/notifications/stream");
+    eventSourceRef.current = es;
+
+    es.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as { type: string; notification: NotifRow };
+        if (payload.type === "notification") {
+          const notif = { ...payload.notification, _id: String(payload.notification._id) };
+          setNotifications((prev) => [notif, ...prev].slice(0, 50));
+          setUnreadCount((c) => c + 1);
+        }
+      } catch { /* ignore malformed */ }
+    };
+
+    es.onerror = () => {
+      // SSE reconnects automatically — no action needed
+    };
+
+    return () => {
+      es.close();
+      eventSourceRef.current = null;
+    };
   }, [fetchNotifications]);
 
-  // Close on outside click
+  // ── Close on outside click ────────────────────────────────────────────────
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
@@ -55,7 +88,8 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  // Close on Escape
+  // ── Close on Escape ───────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
@@ -63,34 +97,39 @@ export function NotificationBell() {
     return () => document.removeEventListener("keydown", handleKey);
   }, [open]);
 
+  // ── Actions ───────────────────────────────────────────────────────────────
+
   async function markAllRead() {
-    setIsLoading(true);
+    setIsMarkingAll(true);
     try {
       await fetch("/api/notifications", { method: "PUT" });
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch { /* silent */ }
-    finally { setIsLoading(false); }
+    finally { setIsMarkingAll(false); }
   }
 
-  async function markOneRead(id: string) {
-    try {
-      await fetch(`/api/notifications/${id}`, { method: "PATCH" });
-      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, read: true } : n));
-      setUnreadCount((c) => Math.max(0, c - 1));
-    } catch { /* silent */ }
-  }
-
-  function handleOpen() {
-    setOpen((v) => !v);
-    if (!open) fetchNotifications();
+  async function handleNotifClick(n: NotifRow) {
+    // Mark as read
+    if (!n.read) {
+      try {
+        await fetch(`/api/notifications/${n._id}`, { method: "PATCH" });
+        setNotifications((prev) => prev.map((x) => x._id === n._id ? { ...x, read: true } : x));
+        setUnreadCount((c) => Math.max(0, c - 1));
+      } catch { /* silent */ }
+    }
+    // Navigate if link present
+    if (n.link) {
+      setOpen(false);
+      router.push(n.link);
+    }
   }
 
   return (
     <div className="relative" ref={panelRef}>
       {/* Bell button */}
       <button
-        onClick={handleOpen}
+        onClick={() => { setOpen((v) => !v); }}
         className={cn(
           "relative inline-flex items-center justify-center size-8 rounded-lg",
           "text-muted-foreground hover:text-foreground hover:bg-muted transition-colors",
@@ -133,13 +172,12 @@ export function NotificationBell() {
                   </span>
                 )}
               </h3>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllRead}
-                    disabled={isLoading}
+                    disabled={isMarkingAll}
                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
-                    aria-label="Mark all as read"
                   >
                     <CheckCheck className="size-3.5" aria-hidden="true" />
                     Mark all read
@@ -147,15 +185,15 @@ export function NotificationBell() {
                 )}
                 <button
                   onClick={() => setOpen(false)}
-                  className="ml-2 inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  aria-label="Close notifications"
+                  className="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  aria-label="Close"
                 >
                   <X className="size-3.5" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            {/* Notification list */}
+            {/* List */}
             <div className="overflow-y-auto flex-1">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center px-4">
@@ -168,13 +206,24 @@ export function NotificationBell() {
                   {notifications.map((n) => (
                     <li
                       key={n._id}
+                      onClick={() => handleNotifClick(n)}
                       className={cn(
                         "flex gap-3 px-4 py-3 transition-colors",
-                        !n.read ? "bg-primary/5" : "hover:bg-muted/40"
+                        n.link ? "cursor-pointer" : "cursor-default",
+                        !n.read ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/40"
                       )}
+                      role={n.link ? "button" : undefined}
+                      tabIndex={n.link ? 0 : undefined}
+                      onKeyDown={n.link ? (e) => { if (e.key === "Enter") handleNotifClick(n); } : undefined}
                     >
-                      {/* Type indicator dot */}
-                      <div className={cn("mt-1 flex-shrink-0 size-2 rounded-full", !n.read ? "bg-primary" : "bg-transparent")} aria-hidden="true" />
+                      {/* Colored dot */}
+                      <div
+                        className={cn(
+                          "mt-1.5 flex-shrink-0 size-2 rounded-full",
+                          !n.read ? TYPE_DOT[n.type] ?? "bg-primary" : "bg-muted"
+                        )}
+                        aria-hidden="true"
+                      />
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
@@ -186,26 +235,9 @@ export function NotificationBell() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
-                        <div className="flex items-center gap-3 mt-1.5">
-                          {n.link && (
-                            <Link
-                              href={n.link}
-                              onClick={() => { markOneRead(n._id); setOpen(false); }}
-                              className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
-                            >
-                              <ExternalLink className="size-2.5" aria-hidden="true" />
-                              View
-                            </Link>
-                          )}
-                          {!n.read && (
-                            <button
-                              onClick={() => markOneRead(n._id)}
-                              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              Mark read
-                            </button>
-                          )}
-                        </div>
+                        {n.link && (
+                          <p className="text-[10px] text-primary mt-1">Tap to view →</p>
+                        )}
                       </div>
                     </li>
                   ))}

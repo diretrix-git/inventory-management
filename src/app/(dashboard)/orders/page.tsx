@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { Button } from "@/components/ui/button";
 import { OrderForm } from "@/components/orders/OrderForm";
 import { useRole } from "@/components/providers/RoleProvider";
+import { friendlyError } from "@/lib/errors";
 import type { IOrder } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ export default function OrdersPage() {
         body: JSON.stringify({ status: confirmAction.action }),
       });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to update order"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error ?? "")); return; }
       toast.success(`Order ${confirmAction.action}`);
       setConfirmAction(null);
       await fetchOrders();
@@ -115,7 +116,7 @@ export default function OrdersPage() {
       accessorKey: "totalAmount",
       header: "Total",
       cell: ({ row }) => (
-        <span className="font-mono text-sm tabular-nums">${row.original.totalAmount.toFixed(2)}</span>
+        <span className="font-mono text-sm tabular-nums">Rs {row.original.totalAmount.toFixed(2)}</span>
       ),
     },
     {
@@ -249,11 +250,11 @@ export default function OrdersPage() {
               <div><p className="text-xs text-muted-foreground mb-0.5">Status</p><StatusBadge status={viewOrder.status} /></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Customer</p><p className="font-medium">{viewOrder.customerName}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Date</p><p className="font-mono text-xs">{new Date(viewOrder.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p></div>
-              <div><p className="text-xs text-muted-foreground mb-0.5">Subtotal</p><p className="font-mono">${viewOrder.subtotal.toFixed(2)}</p></div>
-              <div><p className="text-xs text-muted-foreground mb-0.5">Tax ({viewOrder.taxRate}%)</p><p className="font-mono">${viewOrder.taxAmount.toFixed(2)}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Subtotal</p><p className="font-mono">Rs {viewOrder.subtotal.toFixed(2)}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Tax ({viewOrder.taxRate}%)</p><p className="font-mono">Rs {viewOrder.taxAmount.toFixed(2)}</p></div>
               <div className="col-span-2 border-t border-border pt-2">
                 <p className="text-xs text-muted-foreground mb-0.5">Total</p>
-                <p className="font-mono text-lg font-semibold">${viewOrder.totalAmount.toFixed(2)}</p>
+                <p className="font-mono text-lg font-semibold">Rs {viewOrder.totalAmount.toFixed(2)}</p>
               </div>
             </div>
             {viewOrder.items && viewOrder.items.length > 0 && (
@@ -267,8 +268,8 @@ export default function OrdersPage() {
                         <p className="font-mono text-xs text-muted-foreground">{item.sku}</p>
                       </div>
                       <div className="text-right flex-shrink-0 ml-3">
-                        <p className="font-mono text-xs text-muted-foreground">×{item.quantity} @ ${item.unitPrice.toFixed(2)}</p>
-                        <p className="font-mono text-sm font-semibold">${item.lineTotal.toFixed(2)}</p>
+                        <p className="font-mono text-xs text-muted-foreground">×{item.quantity} @ Rs {item.unitPrice.toFixed(2)}</p>
+                        <p className="font-mono text-sm font-semibold">Rs {item.lineTotal.toFixed(2)}</p>
                       </div>
                     </div>
                   ))}

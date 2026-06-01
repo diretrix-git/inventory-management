@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
@@ -61,10 +61,10 @@ export default function InventoryReportPage() {
     { accessorKey: "name", header: "Name", cell: ({ row }) => <span className="font-medium">{row.original.name}</span> },
     { accessorKey: "sku", header: "SKU", cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.sku}</span> },
     { accessorKey: "category", header: "Category", cell: ({ row }) => <span className="text-muted-foreground">{row.original.category ?? "—"}</span> },
-    { accessorKey: "price", header: "Unit Price", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">${row.original.price.toFixed(2)}</span> },
+    { accessorKey: "price", header: "Unit Price", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">Rs {row.original.price.toFixed(2)}</span> },
     { accessorKey: "quantity", header: "Qty", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.quantity}</span> },
     { accessorKey: "lowStockThreshold", header: "Threshold", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.lowStockThreshold}</span> },
-    { accessorKey: "totalStockValue", header: "Stock Value", cell: ({ row }) => <span className="font-mono text-sm tabular-nums font-semibold">${row.original.totalStockValue.toFixed(2)}</span> },
+    { accessorKey: "totalStockValue", header: "Stock Value", cell: ({ row }) => <span className="font-mono text-sm tabular-nums font-semibold">Rs {row.original.totalStockValue.toFixed(2)}</span> },
     {
       accessorKey: "stockStatus", header: "Status",
       cell: ({ row }) => (
@@ -81,7 +81,7 @@ export default function InventoryReportPage() {
     <PageTransition>
       <PageHeader
         title="Inventory Report"
-        description={`Total inventory value: $${totalValue.toFixed(2)}`}
+        description={`Total inventory value: $Rs {totalValue.toFixed(2)}`}
         action={
           <Button variant="outline" onClick={exportCsv} disabled={isLoading}>
             <Download className="size-4" aria-hidden="true" />

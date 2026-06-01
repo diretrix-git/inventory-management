@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -27,7 +27,7 @@ export function useOrderNotifications(onNewOrder?: (notification: OrderNotificat
       const data = event.data;
       if (data?.type === "ORDER_CREATED") {
         toast.info(
-          `New order placed: ${data.orderNumber} — ${data.customerName} ($${data.totalAmount.toFixed(2)})`,
+          `New order placed: ${data.orderNumber} — ${data.customerName} ($Rs {data.totalAmount.toFixed(2)})`,
           {
             duration: 8000,
             action: {

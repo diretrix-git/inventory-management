@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
@@ -83,9 +83,9 @@ export default function SalesReportPage() {
     { accessorKey: "orderNumber", header: "Order #", cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.orderNumber}</span> },
     { accessorKey: "customerName", header: "Customer", cell: ({ row }) => <span className="font-medium">{row.original.customerName}</span> },
     { accessorKey: "createdAt", header: "Date", cell: ({ row }) => <span className="font-mono text-xs tabular-nums text-muted-foreground">{new Date(row.original.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })}</span> },
-    { accessorKey: "subtotal", header: "Subtotal", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">${row.original.subtotal.toFixed(2)}</span> },
-    { accessorKey: "taxAmount", header: "Tax", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">${row.original.taxAmount.toFixed(2)}</span> },
-    { accessorKey: "totalAmount", header: "Total", cell: ({ row }) => <span className="font-mono text-sm tabular-nums font-semibold">${row.original.totalAmount.toFixed(2)}</span> },
+    { accessorKey: "subtotal", header: "Subtotal", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">Rs {row.original.subtotal.toFixed(2)}</span> },
+    { accessorKey: "taxAmount", header: "Tax", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">Rs {row.original.taxAmount.toFixed(2)}</span> },
+    { accessorKey: "totalAmount", header: "Total", cell: ({ row }) => <span className="font-mono text-sm tabular-nums font-semibold">Rs {row.original.totalAmount.toFixed(2)}</span> },
   ];
 
   return (
@@ -108,9 +108,9 @@ export default function SalesReportPage() {
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
           {[
-            { label: "Total Revenue", value: `$${summary.totalRevenue.toFixed(2)}` },
+            { label: "Total Revenue", value: `Rs Rs {summary.totalRevenue.toFixed(2)}` },
             { label: "Total Orders", value: summary.totalOrders.toString() },
-            { label: "Avg Order Value", value: `$${summary.avgOrderValue.toFixed(2)}` },
+            { label: "Avg Order Value", value: `Rs Rs {summary.avgOrderValue.toFixed(2)}` },
             { label: "Distinct SKUs Sold", value: summary.distinctSkus.toString() },
           ].map((s) => (
             <div key={s.label} className="rounded-xl border border-border bg-card p-4">

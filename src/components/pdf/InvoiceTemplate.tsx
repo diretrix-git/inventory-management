@@ -1,4 +1,4 @@
-// "use server" — this file imports @react-pdf/renderer and must never be imported in client components
+﻿// "use server" — this file imports @react-pdf/renderer and must never be imported in client components
 import {
   Document,
   Page,
@@ -182,8 +182,8 @@ export function InvoiceTemplate({ invoice, order, settings }: InvoiceTemplatePro
               <Text style={[styles.cellText, styles.colDescription]}>{item.productName}</Text>
               <Text style={[styles.skuText, styles.colSku]}>{item.sku}</Text>
               <Text style={[styles.cellText, styles.colQty]}>{item.quantity}</Text>
-              <Text style={[styles.cellText, styles.colUnit]}>${item.unitPrice.toFixed(2)}</Text>
-              <Text style={[styles.cellText, styles.colTotal]}>${item.lineTotal.toFixed(2)}</Text>
+              <Text style={[styles.cellText, styles.colUnit]}>Rs {item.unitPrice.toFixed(2)}</Text>
+              <Text style={[styles.cellText, styles.colTotal]}>Rs {item.lineTotal.toFixed(2)}</Text>
             </View>
           ))}
         </View>
@@ -193,15 +193,15 @@ export function InvoiceTemplate({ invoice, order, settings }: InvoiceTemplatePro
           <View style={styles.totalsBox}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalValue}>${invoice.subtotal.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>Rs {invoice.subtotal.toFixed(2)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax ({invoice.taxRate}%)</Text>
-              <Text style={styles.totalValue}>${invoice.taxAmount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>Rs {invoice.taxAmount.toFixed(2)}</Text>
             </View>
             <View style={styles.grandTotalRow}>
               <Text style={styles.grandTotalLabel}>Total</Text>
-              <Text style={styles.grandTotalLabel}>${invoice.totalAmount.toFixed(2)}</Text>
+              <Text style={styles.grandTotalLabel}>Rs {invoice.totalAmount.toFixed(2)}</Text>
             </View>
           </View>
         </View>

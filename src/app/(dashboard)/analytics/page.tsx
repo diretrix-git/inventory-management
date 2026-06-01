@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
             <p className="text-xs text-muted-foreground">Total Revenue (selected range)</p>
           </div>
           <p className="font-mono text-2xl font-semibold tabular-nums">
-            ${(data?.summary.totalRevenue ?? 0).toFixed(2)}
+            Rs {(data?.summary.totalRevenue ?? 0).toFixed(2)}
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
@@ -168,10 +168,10 @@ export default function AnalyticsPage() {
                 return `${m}/${y.slice(2)}`;
               }}
             />
-            <YAxis tick={chartStyle.tickStyle} tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+            <YAxis tick={chartStyle.tickStyle} tickFormatter={(v: number) => `Rs ${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
             <Tooltip
               contentStyle={chartStyle.contentStyle}
-              formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
+              formatter={(v: number) => [`Rs Rs {v.toFixed(2)}`, "Revenue"]}
               labelFormatter={(l: string) => {
                 const [y, m] = l.split("-");
                 return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
                 tick={chartStyle.tickStyle}
                 tickFormatter={(v: string) => new Date(v).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               />
-              <YAxis yAxisId="rev" tick={chartStyle.tickStyle} tickFormatter={(v: number) => `$${v}`} />
+              <YAxis yAxisId="rev" tick={chartStyle.tickStyle} tickFormatter={(v: number) => `Rs ${v}`} />
               <YAxis yAxisId="ord" orientation="right" tick={chartStyle.tickStyle} />
               <Tooltip
                 contentStyle={chartStyle.contentStyle}
@@ -226,7 +226,7 @@ export default function AnalyticsPage() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data?.topProducts ?? []} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-              <XAxis type="number" tick={chartStyle.tickStyle} tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+              <XAxis type="number" tick={chartStyle.tickStyle} tickFormatter={(v: number) => `Rs ${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
               <YAxis
                 type="category"
                 dataKey="productName"
@@ -237,7 +237,7 @@ export default function AnalyticsPage() {
               <Tooltip
                 contentStyle={chartStyle.contentStyle}
                 formatter={(v: number, name: string) => [
-                  name === "totalRevenue" ? `$${v.toFixed(2)}` : v,
+                  name === "totalRevenue" ? `Rs Rs {v.toFixed(2)}` : v,
                   name === "totalRevenue" ? "Revenue" : "Units sold",
                 ]}
               />
@@ -273,7 +273,7 @@ export default function AnalyticsPage() {
                 </Pie>
                 <Tooltip
                   contentStyle={chartStyle.contentStyle}
-                  formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
+                  formatter={(v: number) => [`Rs Rs {v.toFixed(2)}`, "Revenue"]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -296,7 +296,7 @@ export default function AnalyticsPage() {
                         <span className="inline-block size-2.5 rounded-full flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                         <span className="font-medium text-foreground">{c._id}</span>
                       </td>
-                      <td className="py-1.5 text-right font-mono tabular-nums">${c.revenue.toFixed(2)}</td>
+                      <td className="py-1.5 text-right font-mono tabular-nums">Rs {c.revenue.toFixed(2)}</td>
                       <td className="py-1.5 text-right font-mono tabular-nums">{c.units}</td>
                       <td className="py-1.5 text-right font-mono tabular-nums text-muted-foreground">{c.percentage}%</td>
                     </tr>
@@ -333,7 +333,7 @@ export default function AnalyticsPage() {
                       <p className="font-medium text-foreground">{p.productName}</p>
                       <p className="font-mono text-xs text-muted-foreground">{p.sku}</p>
                     </td>
-                    <td className="py-2 text-right font-mono text-sm tabular-nums">${p.totalRevenue.toFixed(2)}</td>
+                    <td className="py-2 text-right font-mono text-sm tabular-nums">Rs {p.totalRevenue.toFixed(2)}</td>
                     <td className="py-2 text-right font-mono text-sm tabular-nums">{p.totalQty}</td>
                   </tr>
                 ))}

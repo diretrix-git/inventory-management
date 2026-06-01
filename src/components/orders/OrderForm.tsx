@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 import type { IProduct } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -88,7 +89,7 @@ function ProductCard({
           </span>
         )}
         <div className="flex items-center justify-between mt-auto pt-2">
-          <span className="font-mono text-sm font-semibold">${product.price.toFixed(2)}</span>
+          <span className="font-mono text-sm font-semibold">Rs {product.price.toFixed(2)}</span>
           <span className={cn("text-xs", outOfStock ? "text-destructive" : product.quantity <= 5 ? "text-warning" : "text-muted-foreground")}>
             {outOfStock ? "Out of stock" : `${product.quantity} left`}
           </span>
@@ -235,7 +236,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         }),
       });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to create order"); return; }
+      if (!res.ok) { toast.error(friendlyError(json.error)); return; }
 
       if (json.requiresApproval) {
         toast.warning(`Order submitted for admin approval — total ≥ ₹15,000. Stock will be reserved once approved.`, { duration: 6000 });
@@ -374,7 +375,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{p.sku} · ${p.price.toFixed(2)}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{p.sku} · Rs {p.price.toFixed(2)}</p>
                   </div>
                   <span className={cn("text-xs flex-shrink-0", outOfStock ? "text-destructive" : "text-muted-foreground")}>
                     {outOfStock ? "Out" : `${p.quantity}`}
@@ -413,7 +414,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                   <p className="text-xs text-muted-foreground font-mono">{line.sku}</p>
                 </div>
                 <span className="font-mono text-xs text-muted-foreground flex-shrink-0">×{line.quantity}</span>
-                <span className="font-mono text-sm tabular-nums flex-shrink-0">${(line.unitPrice * line.quantity).toFixed(2)}</span>
+                <span className="font-mono text-sm tabular-nums flex-shrink-0">Rs {(line.unitPrice * line.quantity).toFixed(2)}</span>
                 <button type="button" onClick={() => deleteFromCart(line.productId)} aria-label={`Remove ${line.productName}`}
                   className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0">
                   <Trash2 className="size-3.5" aria-hidden="true" />
@@ -424,15 +425,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           <div className="rounded-lg border border-border bg-muted/40 px-3 py-3 flex flex-col gap-1.5 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Subtotal</span>
-              <span className="font-mono tabular-nums">${subtotal.toFixed(2)}</span>
+              <span className="font-mono tabular-nums">Rs {subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>Tax ({taxRate}%)</span>
-              <span className="font-mono tabular-nums">${taxAmount.toFixed(2)}</span>
+              <span className="font-mono tabular-nums">Rs {taxAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1.5 mt-0.5">
               <span>Total</span>
-              <span className="font-mono tabular-nums">${totalAmount.toFixed(2)}</span>
+              <span className="font-mono tabular-nums">Rs {totalAmount.toFixed(2)}</span>
             </div>
           </div>
         </div>

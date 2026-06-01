@@ -17,6 +17,8 @@ interface MobileLayoutShellProps {
 
 export function MobileLayoutShell({ role, user, children }: MobileLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Desktop sidebar: true = expanded (240px), false = icon-only (64px)
+  const [desktopExpanded, setDesktopExpanded] = useState(true);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -24,6 +26,8 @@ export function MobileLayoutShell({ role, user, children }: MobileLayoutShellPro
         role={role}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        desktopExpanded={desktopExpanded}
+        onDesktopToggle={() => setDesktopExpanded((v) => !v)}
       />
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <Header user={user} onMenuClick={() => setMobileOpen(true)} />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -54,7 +54,7 @@ function StaffDashboard({ data, isLoading }: { data: StaffDashboardData | null; 
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
-        <StatCard title="Today's Sales" value={isLoading ? 0 : (data?.stats.todayRevenue ?? 0)} prefix="$" formatValue={(v) => v.toFixed(2)} icon={TrendingUp} description="Confirmed today" />
+        <StatCard title="Today's Sales" value={isLoading ? 0 : (data?.stats.todayRevenue ?? 0)} prefix="Rs " formatValue={(v) => v.toFixed(2)} icon={TrendingUp} description="Confirmed today" />
         <StatCard title="Pending Orders" value={isLoading ? 0 : (data?.stats.pendingOrders ?? 0)} icon={Clock} description="Awaiting confirmation" />
         <StatCard title="Low Stock Items" value={isLoading ? 0 : (data?.stats.lowStockCount ?? 0)} icon={AlertTriangle} description="Need restocking" />
       </div>
@@ -128,7 +128,7 @@ function StaffDashboard({ data, isLoading }: { data: StaffDashboardData | null; 
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <StatusBadge status={o.status} />
-                  <span className="font-mono text-sm tabular-nums">${o.totalAmount.toFixed(2)}</span>
+                  <span className="font-mono text-sm tabular-nums">Rs {o.totalAmount.toFixed(2)}</span>
                 </div>
               </motion.li>
             ))}
@@ -179,7 +179,7 @@ function AdminDashboard({ data, isLoading }: { data: AdminDashboardData | null; 
         <StatCard
           title="Today's Revenue"
           value={isLoading ? 0 : (data?.stats.todayRevenue ?? 0)}
-          prefix="$"
+          prefix="Rs "
           formatValue={(v) => v.toFixed(2)}
           icon={TrendingUp}
           description="Confirmed invoices today"
@@ -239,7 +239,7 @@ function AdminDashboard({ data, isLoading }: { data: AdminDashboardData | null; 
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <StatusBadge status={order.status} />
-                    <span className="font-mono text-sm tabular-nums">${order.totalAmount.toFixed(2)}</span>
+                    <span className="font-mono text-sm tabular-nums">Rs {order.totalAmount.toFixed(2)}</span>
                   </div>
                 </motion.li>
               ))}
