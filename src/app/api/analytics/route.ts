@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { Order } from "@/models/Order";
+import { Product } from "@/models/Product";
 import { requireRole } from "@/lib/auth-utils";
 
 // ─── GET /api/analytics ───────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
       createdAt: { $gte: startDate, $lte: endDate },
     };
 
-    const [monthlyRevenue, topProducts, weeklyTrend, categoryData] = await Promise.all([
+    const [monthlyRevenue, topProducts, weeklyTrend, categoryData, allProducts] = await Promise.all([
       // Monthly Revenue Chart — last 12 months
       Order.aggregate([
         { $match: { status: "confirmed", createdAt: { $gte: twelveMonthsAgo } } },
@@ -111,6 +112,9 @@ export async function GET(req: NextRequest) {
         },
         { $sort: { revenue: -1 } },
       ]),
+
+      // All products for low-stock insights
+      Product.find({}).select("name quantity lowStockThreshold").lean(),
     ]);
 
     // Compute category percentages
@@ -120,9 +124,23 @@ export async function GET(req: NextRequest) {
       percentage: totalRevenue > 0 ? Math.round((c.revenue / totalRevenue) * 10000) / 100 : 0,
     }));
 
+    // Low stock products for insights
+    const lowStockProducts = (allProducts as { name: string; quantity: number; lowStockThreshold: number }[])
+      .filter((p) => p.quantity <= p.lowStockThreshold)
+      .map((p) => ({ name: p.name, quantity: p.quantity, lowStockThreshold: p.lowStockThreshold }));
+
     // Summary for date range
     const rangeSummary = await Order.aggregate([
       { $match: matchStage },
+      { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" }, totalOrders: { $sum: 1 } } },
+    ]);
+
+    // Previous period summary (same duration, shifted back)
+    const rangeDuration = endDate.getTime() - startDate.getTime();
+    const prevEnd = new Date(startDate.getTime() - 1);
+    const prevStart = new Date(startDate.getTime() - rangeDuration);
+    const prevSummary = await Order.aggregate([
+      { $match: { status: "confirmed" as const, createdAt: { $gte: prevStart, $lte: prevEnd } } },
       { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" }, totalOrders: { $sum: 1 } } },
     ]);
 
@@ -133,9 +151,14 @@ export async function GET(req: NextRequest) {
       topProducts,
       weeklyTrend,
       categoryBreakdown,
+      lowStockProducts,
       summary: {
         totalRevenue: rangeSummary[0]?.totalRevenue ?? 0,
         totalOrders: rangeSummary[0]?.totalOrders ?? 0,
+      },
+      prevSummary: {
+        totalRevenue: prevSummary[0]?.totalRevenue ?? 0,
+        totalOrders: prevSummary[0]?.totalOrders ?? 0,
       },
     });
   } catch (err) {

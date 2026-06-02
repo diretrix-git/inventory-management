@@ -109,9 +109,9 @@ export default function SalesReportPage() {
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
           {[
-            { label: "Total Revenue", value: `Rs Rs {summary.totalRevenue.toFixed(2)}` },
+            { label: "Total Revenue", value: `Rs ${summary.totalRevenue.toFixed(2)}` },
             { label: "Total Orders", value: summary.totalOrders.toString() },
-            { label: "Avg Order Value", value: `Rs Rs {summary.avgOrderValue.toFixed(2)}` },
+            { label: "Avg Order Value", value: `Rs ${summary.avgOrderValue.toFixed(2)}` },
             { label: "Distinct SKUs Sold", value: summary.distinctSkus.toString() },
           ].map((s) => (
             <div key={s.label} className="rounded-xl border border-border bg-card p-4">
