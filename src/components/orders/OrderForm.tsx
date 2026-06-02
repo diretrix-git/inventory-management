@@ -168,7 +168,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   // Derived: filtered products
   const filteredProducts = allProducts.filter((p) => {
     const q = searchQuery.toLowerCase();
-    const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
+    const matchesSearch = !q || p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q);
     const matchesCategory = !selectedCategory || p.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -194,7 +194,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       return [...prev, {
         productId: product._id,
         productName: product.name,
-        sku: product.sku,
+        sku: product.sku ?? "",
         unitPrice: product.price,
         quantity: 1,
         availableQty: product.quantity,

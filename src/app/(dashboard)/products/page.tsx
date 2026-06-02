@@ -33,7 +33,7 @@ type ProductRow = Omit<IProduct, "_id"> & { _id: string; isLowStock?: boolean };
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required").max(200, "Name too long"),
-  sku: z.string().min(1, "SKU is required").max(50, "SKU too long"),
+  sku: z.string().max(50, "SKU too long").optional(),
   category: z.string().max(100, "Category too long").optional(),
   description: z.string().optional(),
   price: z.preprocess((v) => parseFloat(String(v)), z.number().min(0, "Price must be ≥ 0")),
@@ -95,11 +95,12 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
       const method = isEdit ? "PUT" : "POST";
       const body: Record<string, unknown> = {
         name: data.name,
-        sku: data.sku.toUpperCase(),
         price: data.price,
         quantity: data.quantity,
         lowStockThreshold: data.lowStockThreshold,
       };
+      // Only include SKU on create (and only if provided — otherwise API auto-generates)
+      if (!isEdit && data.sku?.trim()) body.sku = data.sku.toUpperCase();
       if (data.category) body.category = data.category;
       if (data.description) body.description = data.description;
       if (data.supplierId) body.supplierId = data.supplierId;
@@ -138,10 +139,25 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
 
-          {/* SKU */}
+          {/* SKU — optional on create, read-only on edit */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-sku">SKU <span className="text-destructive" aria-hidden="true">*</span></Label>
-            <Input id="p-sku" type="text" placeholder="e.g. PROD-001" aria-invalid={!!errors.sku} {...register("sku")} className="font-mono uppercase" />
+            <Label htmlFor="p-sku">
+              SKU
+              {isEdit ? (
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">(cannot be changed after creation)</span>
+              ) : (
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">(leave blank to auto-generate)</span>
+              )}
+            </Label>
+            <Input
+              id="p-sku"
+              type="text"
+              placeholder={isEdit ? editProduct.sku ?? "Auto-generated" : "e.g. PROD-001 or leave blank"}
+              aria-invalid={!!errors.sku}
+              {...register("sku")}
+              readOnly={isEdit}
+              className={isEdit ? "font-mono bg-muted cursor-not-allowed opacity-70" : "font-mono uppercase"}
+            />
             {errors.sku && <p className="text-xs text-destructive">{errors.sku.message}</p>}
           </div>
 
@@ -329,7 +345,11 @@ export default function ProductsPage() {
     {
       accessorKey: "sku",
       header: "SKU",
-      cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground tabular-nums">{row.original.sku}</span>,
+      cell: ({ row }) => (
+        <span className="font-mono text-xs text-muted-foreground tabular-nums">
+          {row.original.sku ?? <span className="italic text-muted-foreground/50">—</span>}
+        </span>
+      ),
     },
     {
       accessorKey: "category",
@@ -569,7 +589,14 @@ export default function ProductsPage() {
             )}
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div><p className="text-xs text-muted-foreground mb-0.5">Name</p><p className="font-medium">{viewProduct.name}</p></div>
-              <div><p className="text-xs text-muted-foreground mb-0.5">SKU</p><p className="font-mono">{viewProduct.sku}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">SKU</p>
+                <p className="font-mono text-sm">
+                  {viewProduct.sku
+                    ? <span>{viewProduct.sku}</span>
+                    : <span className="text-muted-foreground italic text-xs">Auto-generated on save</span>
+                  }
+                </p>
+              </div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Category</p><p>{viewProduct.category ?? "—"}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Price</p><p className="font-mono">Rs {viewProduct.price.toFixed(2)}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Stock</p><p className="font-mono">{viewProduct.quantity}</p></div>

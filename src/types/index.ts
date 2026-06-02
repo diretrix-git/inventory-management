@@ -16,7 +16,7 @@ export interface IUser {
 export interface IProduct {
   _id: string | Types.ObjectId;
   name: string;
-  sku: string;
+  sku?: string;        // optional — auto-generated at creation if not provided
   category?: string;
   description?: string;
   price: number;

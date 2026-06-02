@@ -10,7 +10,8 @@ import { logAction } from "@/lib/audit";
 
 const updateProductSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  sku: z.string().min(1).max(50).optional(),
+  // SKU is intentionally excluded from updates — it's set at creation and
+  // referenced by orders/invoices. Changing it would break historical records.
   category: z.string().max(100).optional(),
   description: z.string().optional(),
   price: z.number().min(0).optional(),
@@ -50,28 +51,12 @@ export async function PUT(
 
   const updates = parsed.data;
 
-  // Normalize SKU if provided
-  if (updates.sku) {
-    updates.sku = updates.sku.toUpperCase();
-  }
-
   try {
     await connectDB();
 
     const product = await Product.findById(id);
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
-
-    // Check SKU uniqueness if changing SKU
-    if (updates.sku && updates.sku !== product.sku) {
-      const existing = await Product.findOne({ sku: updates.sku, _id: { $ne: id } }).lean();
-      if (existing) {
-        return NextResponse.json(
-          { error: "A product with this SKU already exists" },
-          { status: 409 }
-        );
-      }
     }
 
     Object.assign(product, updates);

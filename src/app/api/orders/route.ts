@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       return {
         productId: product._id,
         productName: product.name,
-        sku: product.sku,
+        sku: product.sku ?? "",
         quantity: item.quantity,
         unitPrice: product.price,
         lineTotal,

@@ -6,11 +6,28 @@ import { requireRole } from "@/lib/auth-utils";
 import { logAction } from "@/lib/audit";
 import { auth } from "../../../../auth";
 
+// ─── SKU auto-generation ──────────────────────────────────────────────────────
+
+async function generateSku(): Promise<string> {
+  // Format: PROD-XXXXXX (6-digit zero-padded count)
+  const count = await Product.countDocuments();
+  const seq = String(count + 1).padStart(6, "0");
+  const candidate = `PROD-${seq}`;
+  // Ensure uniqueness in case of race conditions
+  const existing = await Product.findOne({ sku: candidate }).lean();
+  if (existing) {
+    // Add random suffix if collision
+    const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `PROD-${seq}-${rand}`;
+  }
+  return candidate;
+}
+
 // ─── Validation schema ────────────────────────────────────────────────────────
 
 const createProductSchema = z.object({
   name: z.string().min(1).max(200),
-  sku: z.string().min(1).max(50),
+  sku: z.string().max(50).optional(), // optional — auto-generated if not provided
   category: z.string().max(100).optional(),
   description: z.string().optional(),
   price: z.number().min(0),
@@ -66,7 +83,8 @@ export async function POST(req: NextRequest) {
   }
 
   const data = parsed.data;
-  const sku = data.sku.toUpperCase();
+  // Use provided SKU (uppercased) or auto-generate one
+  const sku = data.sku ? data.sku.toUpperCase() : await generateSku();
 
   try {
     await connectDB();
