@@ -53,7 +53,7 @@ export default function OrdersPage() {
       const json = await res.json();
       setOrders((json.orders as OrderRow[]).map((o) => ({ ...o, _id: String(o._id) })));
     } catch {
-      toast.error("Network error — could not load orders");
+      toast.error("Could not load orders. Please refresh the page.");
     } finally {
       setIsLoading(false);
     }
@@ -250,6 +250,9 @@ export default function OrdersPage() {
               <div><p className="text-xs text-muted-foreground mb-0.5">Status</p><StatusBadge status={viewOrder.status} /></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Customer</p><p className="font-medium">{viewOrder.customerName}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Date</p><p className="font-mono text-xs">{new Date(viewOrder.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p></div>
+              {viewOrder.customerEmail && (
+                <div className="col-span-2"><p className="text-xs text-muted-foreground mb-0.5">Customer Email</p><p className="text-sm">{viewOrder.customerEmail}</p></div>
+              )}
               <div><p className="text-xs text-muted-foreground mb-0.5">Subtotal</p><p className="font-mono">Rs {viewOrder.subtotal.toFixed(2)}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Tax ({viewOrder.taxRate}%)</p><p className="font-mono">Rs {viewOrder.taxAmount.toFixed(2)}</p></div>
               <div className="col-span-2 border-t border-border pt-2">

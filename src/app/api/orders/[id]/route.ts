@@ -130,7 +130,7 @@ export async function PUT(
         role: "staff",
         type: "order_approved",
         title: "Order Approved",
-        message: `Your order ${order.orderNumber} (₹${order.totalAmount.toFixed(2)}) has been approved and stock has been reserved.`,
+        message: `Your order ${order.orderNumber} (Rs ${order.totalAmount.toFixed(2)}) has been approved and stock has been reserved.`,
         link: "/orders",
       });
       logAction({

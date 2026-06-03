@@ -9,6 +9,7 @@ const STAFF_RESTRICTED_PATHS = [
   "/dashboard/audit-logs",
   "/dashboard/inventory-report",
   "/dashboard/sales-report",
+  "/dashboard/categories",
 ];
 
 export default auth((req: NextAuthRequest) => {

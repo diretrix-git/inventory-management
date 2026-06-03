@@ -213,7 +213,7 @@ function AdminDashboard({ data, isLoading }: { data: AdminDashboardData | null; 
             <p className="text-sm font-medium text-foreground">
               {data!.stats.pendingApprovals} order{data!.stats.pendingApprovals > 1 ? "s" : ""} waiting for your approval
             </p>
-            <p className="text-xs text-muted-foreground">These are high-value orders (≥ ₹15,000) that need admin confirmation before stock is reserved.</p>
+            <p className="text-xs text-muted-foreground">These are high-value orders (≥ Rs 15,000) that need admin confirmation before stock is reserved.</p>
           </div>
           <Link href="/orders" className="flex-shrink-0 text-xs font-medium text-primary hover:underline">
             Review orders →

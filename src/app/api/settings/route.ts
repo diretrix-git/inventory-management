@@ -3,10 +3,11 @@ import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { SystemSettings } from "@/models/SystemSettings";
 import { requireRole } from "@/lib/auth-utils";
+import { logAction } from "@/lib/audit";
 import { auth } from "../../../../auth";
 
 // ─── GET /api/settings ────────────────────────────────────────────────────────
-// All authenticated roles — read settings (needed for tax rate in order form)
+// All authenticated roles — read settings
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -42,6 +43,7 @@ const settingsSchema = z.object({
 export async function PUT(req: NextRequest) {
   const authResult = await requireRole(req, ["admin"]);
   if (authResult.response) return authResult.response;
+  const { session } = authResult;
 
   let body: unknown;
   try {
@@ -65,6 +67,16 @@ export async function PUT(req: NextRequest) {
       { $set: parsed.data },
       { upsert: true, new: true }
     ).lean();
+
+    // Fire-and-forget audit log
+    logAction({
+      userId: session.user.id,
+      userName: session.user.name ?? "Unknown",
+      action: "settings.updated",
+      targetModel: "SystemSettings",
+      details: parsed.data,
+    });
+
     return NextResponse.json({ settings });
   } catch (err) {
     console.error("[PUT /api/settings]", err);
