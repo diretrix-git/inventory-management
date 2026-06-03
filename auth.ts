@@ -1,7 +1,5 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
-import GitHub from "next-auth/providers/github";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
@@ -9,14 +7,6 @@ import type { Role } from "@/types";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    GitHub({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!,
-    }),
     Credentials({
       name: "credentials",
       credentials: {
@@ -74,13 +64,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     async jwt({ token, user, trigger }) {
-      // On initial sign-in, user object is present — seed the token
       if (user) {
         token.id = user.id;
         token.role = (user as { id?: string; role?: Role }).role;
       }
 
-      // On session update or if role is missing, re-fetch from DB
       if (trigger === "update" || !token.role) {
         try {
           await connectDB();
@@ -88,7 +76,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (dbUser) {
             token.role = dbUser.role as Role;
             token.name = dbUser.name;
-            // Sync image from DB (set via profile page upload)
             if (dbUser.image) token.picture = dbUser.image;
           }
         } catch {
