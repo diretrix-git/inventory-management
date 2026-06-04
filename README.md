@@ -1,36 +1,206 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mini-Mart Inventory Management System
 
-## Getting Started
+A full-stack internal web application for managing a mini-mart — products, suppliers, orders, invoices, analytics, and staff management.
 
-First, run the development server:
+---
 
+## Features
+
+| Module | What it does |
+|---|---|
+| **Products** | CRUD with categories, Cloudinary image upload, auto-generated SKUs, low-stock alerts, supplier linking |
+| **Suppliers** | Manage supplier directory linked to products |
+| **Orders** | Create orders with product grid/cart, Rs 15,000 approval threshold, atomic stock deduction |
+| **Invoices** | PDF invoice generation and download for every order |
+| **Categories** | Full CRUD for product categories with inline-add from product form |
+| **Users** | Admin creates/deactivates staff accounts |
+| **Dashboard** | Role-aware stats — admin sees today's revenue, orders, approvals; staff sees task overview |
+| **Analytics** | 5-question analytics: sales growth, best/dying products, inventory health, order flow, staff performance |
+| **Notifications** | Real-time in-app notifications via Server-Sent Events (SSE) |
+| **Email** | Order confirmation to customer + alert to admin via Gmail |
+| **Audit Logs** | Filterable log of every system action with user, timestamp, and target |
+| **Settings** | Business name, address, tax rate, low-stock threshold |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5.9 |
+| Database | MongoDB Atlas + Mongoose 9 |
+| Auth | Auth.js v5 (credentials only) |
+| Styling | Tailwind CSS 4 + @base-ui/react |
+| Charts | Recharts 2 |
+| Animations | Framer Motion 12 |
+| Tables | TanStack Table v8 |
+| Forms | React Hook Form + Zod |
+| PDF | @react-pdf/renderer (server-side) |
+| Images | Cloudinary (client-side optimization to WebP) |
+| Email | Nodemailer (Gmail SMTP) |
+| Deployment | Vercel |
+
+---
+
+## Installation
+
+### Prerequisites
+- Node.js 20+
+- MongoDB Atlas account (free tier works)
+- Cloudinary account (optional — for product images)
+- Gmail App Password (optional — for email notifications)
+
+### 1. Clone and install
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/diretrix-git/inventory-management.git
+cd inventory-management
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure environment
+```bash
+cp .env.local.example .env.local
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Edit `.env.local` with your values:
+```env
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/inventory
+NEXTAUTH_SECRET=any-random-32-char-string
+NEXTAUTH_URL=http://localhost:3000
+SEED_ADMIN_EMAIL=admin@yourstore.com
+SEED_ADMIN_PASSWORD=YourSecurePassword123!
+SEED_ADMIN_NAME=Store Admin
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Create the first admin account
+```bash
+npm run seed
+```
 
-## Learn More
+### 4. Start development server
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000) and sign in with your seed credentials.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Demo Credentials
 
-## Deploy on Vercel
+> After running `npm run seed` with default `.env.local.example` values:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Field | Value |
+|---|---|
+| Email | `admin@example.com` |
+| Password | `Admin123!` |
+| Role | Admin |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Folder Structure
+
+```
+src/
+├── app/
+│   ├── (auth)/login/         # Login page
+│   ├── (dashboard)/          # All protected pages
+│   │   ├── dashboard/        # Home dashboard
+│   │   ├── products/         # Product catalog
+│   │   ├── suppliers/        # Supplier management
+│   │   ├── orders/           # Order management
+│   │   ├── invoices/         # Invoice list + PDF
+│   │   ├── categories/       # Category CRUD
+│   │   ├── analytics/        # Business analytics
+│   │   ├── users/            # User management
+│   │   ├── profile/          # Profile settings
+│   │   ├── audit-logs/       # System audit trail
+│   │   └── settings/         # Business settings
+│   └── api/                  # 30+ API route handlers
+│
+├── components/
+│   ├── layout/               # Header, Sidebar, NotificationBell
+│   ├── shared/               # Reusable UI components
+│   │   ├── DataTable.tsx     # TanStack Table wrapper
+│   │   ├── ViewModal.tsx     # Row detail modal
+│   │   ├── CategorySelect.tsx # Searchable category dropdown
+│   │   ├── SupplierSelect.tsx # Supplier dropdown with inline add
+│   │   └── CloudinaryUpload.tsx # Drag-and-drop image upload
+│   └── orders/OrderForm.tsx  # Order creation form
+│
+├── lib/
+│   ├── db.ts                 # MongoDB connection
+│   ├── auth-utils.ts         # requireRole() guard
+│   ├── audit.ts              # Audit logging
+│   ├── notify.ts             # In-app notifications + SSE
+│   ├── email.ts              # Gmail email
+│   ├── insights.ts           # Analytics insights engine
+│   └── errors.ts             # User-friendly error messages
+│
+└── models/                   # 9 Mongoose schemas
+    User, Product, Supplier, Order, Invoice,
+    AuditLog, SystemSettings, Category, Notification
+```
+
+---
+
+## Role-Based Access
+
+| Feature | Admin | Staff |
+|---|---|---|
+| View products, suppliers, orders, invoices | ✅ | ✅ |
+| Create/edit/delete products & suppliers | ✅ | ❌ |
+| Create orders | ✅ | ✅ |
+| Confirm/cancel orders | ✅ | ❌ |
+| View analytics, reports, audit logs | ✅ | ❌ |
+| Manage users and settings | ✅ | ❌ |
+| View dashboard (own view) | ✅ | ✅ |
+
+---
+
+## Order Approval Threshold
+
+Orders totalling **Rs 15,000 or more** require admin confirmation before stock is deducted. This prevents large unverified orders from locking up inventory.
+
+- Below Rs 15,000 → auto-confirmed, stock deducted immediately
+- Rs 15,000 and above → stays pending, admin must confirm
+
+---
+
+## Production Deployment (Vercel)
+
+1. Push to GitHub
+2. Import repo in [vercel.com](https://vercel.com)
+3. Add all environment variables from `.env.local.example`
+4. Set `NEXTAUTH_URL` to your production URL
+5. Whitelist Vercel IPs in MongoDB Atlas Network Access
+6. Deploy
+
+---
+
+## Optional Services Setup
+
+### Cloudinary (Product Images)
+1. Create account at [cloudinary.com](https://cloudinary.com)
+2. Go to Settings → Upload → Add upload preset
+3. Set preset name: `inventory_uploads`, mode: **Unsigned**
+4. Add to `.env.local`:
+   ```
+   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+   NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=inventory_uploads
+   ```
+
+### Gmail Email Notifications
+1. Enable 2-Step Verification on your Google account
+2. Go to [Google App Passwords](https://myaccount.google.com/apppasswords)
+3. Create password for "Mail" → copy the 16-character password
+4. Add to `.env.local`:
+   ```
+   GMAIL_USER=your@gmail.com
+   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+   ```
+
+---
+
+## Built with ❤️ for a mini-mart in Nepal
