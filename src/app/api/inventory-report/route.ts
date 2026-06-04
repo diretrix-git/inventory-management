@@ -13,17 +13,21 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const docs = await Product.find({}).sort({ name: 1 });
+    const docs = await Product.find({}).populate("supplierId", "name").sort({ name: 1 });
     const products = docs.map((d) => {
       const obj = d.toObject({ virtuals: true }) as {
         price: number;
         quantity: number;
         lowStockThreshold: number;
         isLowStock?: boolean;
+        supplierId?: { _id: unknown; name?: string } | null;
         [key: string]: unknown;
       };
+      const supplier = obj.supplierId as { _id: unknown; name?: string } | null;
       return {
         ...obj,
+        supplierName: supplier?.name ?? null,
+        supplierId: supplier?._id ? String(supplier._id) : null,
         totalStockValue: obj.price * obj.quantity,
         stockStatus: obj.isLowStock ? "low" : "ok",
       };

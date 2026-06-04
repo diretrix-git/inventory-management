@@ -16,6 +16,7 @@ import { ErrorModal } from "@/components/shared/ErrorModal";
 import { ViewModal } from "@/components/shared/ViewModal";
 import { CloudinaryUpload } from "@/components/shared/CloudinaryUpload";
 import { CategorySelect } from "@/components/shared/CategorySelect";
+import { SupplierSelect } from "@/components/shared/SupplierSelect";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ import type { IProduct } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ProductRow = Omit<IProduct, "_id"> & { _id: string; isLowStock?: boolean };
+type ProductRow = Omit<IProduct, "_id"> & { _id: string; isLowStock?: boolean; supplierName?: string | null };
 
 // ─── Zod schema ───────────────────────────────────────────────────────────────
 
@@ -177,6 +178,22 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
                 />
               )}
             />
+          </div>
+
+          {/* Supplier — searchable dropdown with inline add */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Supplier</Label>
+            <Controller
+              name="supplierId"
+              control={control}
+              render={({ field }) => (
+                <SupplierSelect
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            <p className="text-xs text-muted-foreground">Link this product to its supplier. You can add a new supplier inline.</p>
           </div>
 
           {/* Price & Quantity */}
@@ -376,6 +393,15 @@ export default function ProductsPage() {
               {row.original.category}
             </button>
           ) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "supplier",
+      header: "Supplier",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-sm">
+          {row.original.supplierName ?? "—"}
         </span>
       ),
     },
@@ -598,6 +624,7 @@ export default function ProductsPage() {
                 </p>
               </div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Category</p><p>{viewProduct.category ?? "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Supplier</p><p>{viewProduct.supplierName ?? "—"}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Price</p><p className="font-mono">Rs {viewProduct.price.toFixed(2)}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Stock</p><p className="font-mono">{viewProduct.quantity}</p></div>
               <div><p className="text-xs text-muted-foreground mb-0.5">Low Stock Threshold</p><p className="font-mono">{viewProduct.lowStockThreshold}</p></div>

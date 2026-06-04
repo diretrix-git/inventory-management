@@ -10,5 +10,6 @@ export { DataTable } from "./DataTable";
 export { PageSkeleton } from "./PageSkeleton";
 export { PasswordInput } from "./PasswordInput";
 export { CategorySelect } from "./CategorySelect";
+export { SupplierSelect } from "./SupplierSelect";
 export { CloudinaryUpload } from "./CloudinaryUpload";
 export { Tooltip } from "./Tooltip";

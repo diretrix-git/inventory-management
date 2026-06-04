@@ -15,7 +15,10 @@ import type { IProduct } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ProductResult = Pick<IProduct, "name" | "sku" | "price" | "quantity" | "category" | "imageUrl"> & { _id: string };
+type ProductResult = Pick<IProduct, "name" | "sku" | "price" | "quantity" | "category" | "imageUrl"> & {
+  _id: string;
+  supplierName?: string | null;
+};
 
 interface CartLine {
   productId: string;
@@ -87,6 +90,11 @@ function ProductCard({
           <span className="inline-flex w-fit items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
             {product.category}
           </span>
+        )}
+        {product.supplierName && (
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">Supplier:</span> {product.supplierName}
+          </p>
         )}
         <div className="flex items-center justify-between mt-auto pt-2">
           <span className="font-mono text-sm font-semibold">Rs {product.price.toFixed(2)}</span>
@@ -375,7 +383,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{p.sku} · Rs {p.price.toFixed(2)}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{p.sku} · Rs {p.price.toFixed(2)}{p.supplierName ? ` · ${p.supplierName}` : ""}</p>
                   </div>
                   <span className={cn("text-xs flex-shrink-0", outOfStock ? "text-destructive" : "text-muted-foreground")}>
                     {outOfStock ? "Out" : `${p.quantity}`}

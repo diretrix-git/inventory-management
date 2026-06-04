@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { Product } from "@/models/Product";
+import { Supplier } from "@/models/Supplier";
 import { requireRole } from "@/lib/auth-utils";
 import { logAction } from "@/lib/audit";
 import { auth } from "../../../../auth";
@@ -48,10 +49,19 @@ export async function GET(req: NextRequest) {
 
   try {
     await connectDB();
-    // toJSON virtuals are enabled on the schema, so lean() won't include them.
-    // Fetch as documents and convert with toObject({ virtuals: true }).
-    const docs = await Product.find({}).sort({ createdAt: -1 });
-    const products = docs.map((d) => d.toObject({ virtuals: true }));
+    const docs = await Product.find({})
+      .populate("supplierId", "name")
+      .sort({ createdAt: -1 });
+    const products = docs.map((d) => {
+      const obj = d.toObject({ virtuals: true }) as Record<string, unknown>;
+      // Flatten supplier: { _id, name } → supplierName string for easy use in UI
+      const supplier = obj.supplierId as { _id: unknown; name?: string } | null;
+      return {
+        ...obj,
+        supplierName: supplier?.name ?? null,
+        supplierId: supplier?._id ? String(supplier._id) : null,
+      };
+    });
     return NextResponse.json({ products });
   } catch (err) {
     console.error("[GET /api/products]", err);

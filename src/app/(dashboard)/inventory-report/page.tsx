@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 interface ProductReport {
   _id: string;
   name: string;
-  sku: string;
+  sku?: string;
   category?: string;
+  supplierName?: string | null;
   price: number;
   quantity: number;
   lowStockThreshold: number;
@@ -45,9 +46,17 @@ export default function InventoryReportPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   function exportCsv() {
-    const headers = ["Name", "SKU", "Category", "Unit Price", "Quantity", "Low Stock Threshold", "Total Stock Value", "Status"];
+    const headers = ["Name", "SKU", "Category", "Supplier", "Unit Price", "Quantity", "Low Stock Threshold", "Total Stock Value", "Status"];
     const rows = products.map((p) => [
-      p.name, p.sku, p.category ?? "", p.price, p.quantity, p.lowStockThreshold, p.totalStockValue, p.stockStatus,
+      p.name,
+      p.sku ?? "",
+      p.category ?? "",
+      p.supplierName ?? "",
+      p.price,
+      p.quantity,
+      p.lowStockThreshold,
+      p.totalStockValue,
+      p.stockStatus,
     ]);
     const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -59,19 +68,64 @@ export default function InventoryReportPage() {
   }
 
   const columns: ColumnDef<ProductReport>[] = [
-    { accessorKey: "name", header: "Name", cell: ({ row }) => <span className="font-medium">{row.original.name}</span> },
-    { accessorKey: "sku", header: "SKU", cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.sku}</span> },
-    { accessorKey: "category", header: "Category", cell: ({ row }) => <span className="text-muted-foreground">{row.original.category ?? "—"}</span> },
-    { accessorKey: "price", header: "Unit Price", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">Rs {row.original.price.toFixed(2)}</span> },
-    { accessorKey: "quantity", header: "Qty", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.quantity}</span> },
-    { accessorKey: "lowStockThreshold", header: "Threshold", cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.lowStockThreshold}</span> },
-    { accessorKey: "totalStockValue", header: "Stock Value", cell: ({ row }) => <span className="font-mono text-sm tabular-nums font-semibold">Rs {row.original.totalStockValue.toFixed(2)}</span> },
     {
-      accessorKey: "stockStatus", header: "Status",
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+    },
+    {
+      accessorKey: "sku",
+      header: "SKU",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+          {row.original.sku ?? "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "category",
+      header: "Category",
+      cell: ({ row }) => <span className="text-muted-foreground">{row.original.category ?? "—"}</span>,
+    },
+    {
+      id: "supplier",
+      header: "Supplier",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.supplierName ?? "—"}</span>
+      ),
+    },
+    {
+      accessorKey: "price",
+      header: "Unit Price",
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">Rs {row.original.price.toFixed(2)}</span>,
+    },
+    {
+      accessorKey: "quantity",
+      header: "Qty",
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.quantity}</span>,
+    },
+    {
+      accessorKey: "lowStockThreshold",
+      header: "Threshold",
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.lowStockThreshold}</span>,
+    },
+    {
+      accessorKey: "totalStockValue",
+      header: "Stock Value",
+      cell: ({ row }) => (
+        <span className="font-mono text-sm tabular-nums font-semibold">
+          Rs {row.original.totalStockValue.toFixed(2)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "stockStatus",
+      header: "Status",
       cell: ({ row }) => (
         <span className={row.original.stockStatus === "low"
           ? "inline-flex items-center rounded-full border border-warning/30 bg-warning/15 px-2.5 py-0.5 text-xs font-medium text-warning"
-          : "inline-flex items-center rounded-full border border-success/30 bg-success/15 px-2.5 py-0.5 text-xs font-medium text-success"}>
+          : "inline-flex items-center rounded-full border border-success/30 bg-success/15 px-2.5 py-0.5 text-xs font-medium text-success"
+        }>
           {row.original.stockStatus === "low" ? "Low" : "OK"}
         </span>
       ),
@@ -82,7 +136,7 @@ export default function InventoryReportPage() {
     <PageTransition>
       <PageHeader
         title="Inventory Report"
-        description={`Total inventory value: $Rs {totalValue.toFixed(2)}`}
+        description={`Total inventory value: Rs ${totalValue.toFixed(2)}`}
         action={
           <Button variant="outline" onClick={exportCsv} disabled={isLoading}>
             <Download className="size-4" aria-hidden="true" />
@@ -90,7 +144,15 @@ export default function InventoryReportPage() {
           </Button>
         }
       />
-      <DataTable columns={columns} data={products} isLoading={isLoading} searchKey="name" searchPlaceholder="Search by name…" />
+      <DataTable
+        columns={columns}
+        data={products}
+        isLoading={isLoading}
+        searchKey="name"
+        searchPlaceholder="Search by name…"
+        emptyTitle="No products yet"
+        emptyDescription="Products will appear here once added to the catalog."
+      />
     </PageTransition>
   );
 }
