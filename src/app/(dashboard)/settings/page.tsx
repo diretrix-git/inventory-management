@@ -180,17 +180,22 @@ export default function SettingsPage() {
             </section>
 
             {/* Save button */}
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isSubmitting || !isDirty} aria-busy={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    Saving…
-                  </>
-                ) : (
-                  "Save Settings"
-                )}
-              </Button>
+            <div className="flex items-center justify-between gap-3">
+              {!isDirty && !isSubmitting && (
+                <p className="text-xs text-muted-foreground">Change any value above to enable saving.</p>
+              )}
+              <div className="ml-auto">
+                <Button type="submit" disabled={isSubmitting || !isDirty} aria-busy={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save Settings"
+                  )}
+                </Button>
+              </div>
             </div>
           </form>
         )}

@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, X, Loader2, AlertTriangle, Package, Eye, Filter, SlidersHorizontal } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, AlertTriangle, Package, SlidersHorizontal } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -143,7 +143,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
           {/* SKU — optional on create, read-only on edit */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="p-sku">
-              SKU
+              SKU{" "}
               {isEdit ? (
                 <span className="ml-1.5 text-xs font-normal text-muted-foreground">(cannot be changed after creation)</span>
               ) : (
@@ -164,7 +164,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
 
           {/* Category — dropdown with add new */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-category">Category</Label>
+            <Label htmlFor="p-category">Category <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
             <Controller
               name="category"
               control={control}
@@ -182,7 +182,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
 
           {/* Supplier — searchable dropdown with inline add */}
           <div className="flex flex-col gap-1.5">
-            <Label>Supplier</Label>
+            <Label>Supplier <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
             <Controller
               name="supplierId"
               control={control}
@@ -212,13 +212,13 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
 
           {/* Low stock threshold */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-threshold">Low Stock Threshold</Label>
+            <Label htmlFor="p-threshold">Low Stock Threshold <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
             <Input id="p-threshold" type="number" min="0" step="1" placeholder="10" {...register("lowStockThreshold")} />
           </div>
 
           {/* Description */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-desc">Description</Label>
+            <Label htmlFor="p-desc">Description <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
             <textarea id="p-desc" rows={3} placeholder="Optional description"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
               {...register("description")} />
@@ -226,7 +226,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
 
           {/* Product image */}
           <div className="flex flex-col gap-1.5">
-            <Label>Product Image</Label>
+            <Label>Product Image <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
             <CloudinaryUpload value={imageUrl || null} onChange={setImageUrl} onClear={() => setImageUrl("")}
               label="Upload product image" folder="inventory/products" aspectRatio="aspect-video" />
           </div>
@@ -460,7 +460,7 @@ export default function ProductsPage() {
     <>
       <PageHeader
         title="Products"
-        description="Manage your product catalog."
+        description="Manage your product catalog. Price filters apply as you type."
         action={isAdmin ? (
           <Button onClick={() => { setEditProduct(null); setSheetOpen(true); }}>
             <Plus className="size-4" aria-hidden="true" />
@@ -499,6 +499,7 @@ export default function ProductsPage() {
             type="number" min="0" step="0.01" placeholder="Min"
             value={filterMinPrice}
             onChange={(e) => setFilterMinPrice(e.target.value)}
+            onBlur={(e) => setFilterMinPrice(e.target.value)}
             className="h-7 w-20 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Minimum price"
           />
@@ -507,9 +508,11 @@ export default function ProductsPage() {
             type="number" min="0" step="0.01" placeholder="Max"
             value={filterMaxPrice}
             onChange={(e) => setFilterMaxPrice(e.target.value)}
+            onBlur={(e) => setFilterMaxPrice(e.target.value)}
             className="h-7 w-20 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Maximum price"
           />
+          <span className="text-xs text-muted-foreground/60 hidden sm:inline">applies on change</span>
         </div>
 
         {/* Stock status filter */}

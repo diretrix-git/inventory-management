@@ -265,7 +265,10 @@ export default function SuppliersPage() {
         }
       />
 
-      <DataTable columns={columns} data={suppliers} isLoading={isLoading} searchKey="name" searchPlaceholder="Search by name…" />
+      <DataTable columns={columns} data={suppliers} isLoading={isLoading} searchKey="name" searchPlaceholder="Search by name…"
+        emptyTitle="No suppliers yet"
+        emptyDescription={isAdmin ? "Add your first supplier using the button above." : "No suppliers have been added yet."}
+      />
 
       {isAdmin && (
         <SupplierSheet open={sheetOpen} onClose={() => setSheetOpen(false)} editSupplier={editSupplier} onSuccess={fetchSuppliers} />

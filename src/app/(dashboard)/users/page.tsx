@@ -516,6 +516,8 @@ export default function UsersPage() {
         isLoading={isLoading}
         searchKey="name"
         searchPlaceholder="Search by name…"
+        emptyTitle="No users yet"
+        emptyDescription="Create the first staff account using the button above."
       />
 
       {/* Create / Edit Sheet */}

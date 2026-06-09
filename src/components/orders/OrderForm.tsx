@@ -111,10 +111,10 @@ function ProductCard({
           onClick={onAdd}
           disabled={outOfStock}
           className={cn(
-            "mx-3 mb-3 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors",
+            "mx-3 mb-3 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-medium transition-colors touch-manipulation",
             outOfStock
               ? "bg-muted text-muted-foreground cursor-not-allowed"
-              : "bg-primary text-primary-foreground hover:opacity-90"
+              : "bg-primary text-primary-foreground hover:opacity-90 active:opacity-80"
           )}
           aria-label={`Add ${product.name} to cart`}
         >
@@ -123,11 +123,13 @@ function ProductCard({
         </button>
       ) : (
         <div className="mx-3 mb-3 flex items-center justify-between gap-2">
-          <Button type="button" variant="outline" size="icon-xs" onClick={onRemove} aria-label="Decrease quantity">
+          <Button type="button" variant="outline" size="icon-xs" onClick={onRemove} aria-label="Decrease quantity"
+            className="touch-manipulation min-w-[36px] min-h-[36px]">
             <Minus className="size-3" aria-hidden="true" />
           </Button>
           <span className="font-mono text-sm tabular-nums font-semibold flex-1 text-center">{cartQty}</span>
-          <Button type="button" variant="outline" size="icon-xs" onClick={onAdd} disabled={atMax} aria-label="Increase quantity">
+          <Button type="button" variant="outline" size="icon-xs" onClick={onAdd} disabled={atMax} aria-label="Increase quantity"
+            className="touch-manipulation min-w-[36px] min-h-[36px]">
             <Plus className="size-3" aria-hidden="true" />
           </Button>
         </div>
@@ -144,7 +146,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  // Default to list on mobile (set after mount via useEffect to avoid SSR mismatch)
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [taxRate, setTaxRate] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -247,7 +250,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       if (!res.ok) { toast.error(friendlyError(json.error)); return; }
 
       if (json.requiresApproval) {
-        toast.warning(`Order submitted for admin approval — total ≥ ₹15,000. Stock will be reserved once approved.`, { duration: 6000 });
+        toast.warning(`Order submitted for admin approval — total ≥ Rs 15,000. Stock will be reserved once approved.`, { duration: 6000 });
       } else {
         toast.success(`Order ${json.order.orderNumber} confirmed automatically.`);
       }
@@ -303,11 +306,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           </p>
           <div className="flex items-center gap-1">
             <button type="button" onClick={() => setViewMode("grid")} aria-label="Grid view"
-              className={cn("inline-flex items-center justify-center size-7 rounded-md transition-colors", viewMode === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}>
+              className={cn("inline-flex items-center justify-center size-7 rounded-md transition-colors touch-manipulation", viewMode === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}>
               <LayoutGrid className="size-3.5" aria-hidden="true" />
             </button>
             <button type="button" onClick={() => setViewMode("list")} aria-label="List view"
-              className={cn("inline-flex items-center justify-center size-7 rounded-md transition-colors", viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}>
+              className={cn("inline-flex items-center justify-center size-7 rounded-md transition-colors touch-manipulation", viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}>
               <List className="size-3.5" aria-hidden="true" />
             </button>
           </div>
@@ -355,7 +358,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             {searchQuery && <p className="text-xs text-muted-foreground">Try a different search term</p>}
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-72 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1 overscroll-contain">
             {filteredProducts.map((p) => (
               <ProductCard
                 key={p._id}
@@ -367,7 +370,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-border rounded-xl border border-border overflow-hidden max-h-72 overflow-y-auto">
+          <div className="flex flex-col divide-y divide-border rounded-xl border border-border overflow-hidden max-h-80 overflow-y-auto overscroll-contain">
             {filteredProducts.map((p) => {
               const qty = getCartQty(p._id);
               const outOfStock = p.quantity <= 0;
@@ -389,16 +392,19 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     {outOfStock ? "Out" : `${p.quantity}`}
                   </span>
                   {qty === 0 ? (
-                    <Button type="button" size="icon-xs" onClick={() => addToCart(p)} disabled={outOfStock} aria-label={`Add ${p.name}`}>
+                    <Button type="button" size="icon-xs" onClick={() => addToCart(p)} disabled={outOfStock} aria-label={`Add ${p.name}`}
+                      className="touch-manipulation min-w-[36px] min-h-[36px]">
                       <Plus className="size-3" aria-hidden="true" />
                     </Button>
                   ) : (
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <Button type="button" variant="outline" size="icon-xs" onClick={() => removeFromCart(p._id)} aria-label="Decrease">
+                      <Button type="button" variant="outline" size="icon-xs" onClick={() => removeFromCart(p._id)} aria-label="Decrease"
+                        className="touch-manipulation min-w-[36px] min-h-[36px]">
                         <Minus className="size-3" aria-hidden="true" />
                       </Button>
                       <span className="font-mono text-xs w-5 text-center">{qty}</span>
-                      <Button type="button" variant="outline" size="icon-xs" onClick={() => addToCart(p)} disabled={qty >= p.quantity} aria-label="Increase">
+                      <Button type="button" variant="outline" size="icon-xs" onClick={() => addToCart(p)} disabled={qty >= p.quantity} aria-label="Increase"
+                        className="touch-manipulation min-w-[36px] min-h-[36px]">
                         <Plus className="size-3" aria-hidden="true" />
                       </Button>
                     </div>
@@ -424,7 +430,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 <span className="font-mono text-xs text-muted-foreground flex-shrink-0">×{line.quantity}</span>
                 <span className="font-mono text-sm tabular-nums flex-shrink-0">Rs {(line.unitPrice * line.quantity).toFixed(2)}</span>
                 <button type="button" onClick={() => deleteFromCart(line.productId)} aria-label={`Remove ${line.productName}`}
-                  className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0">
+                  className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0 touch-manipulation min-w-[36px] min-h-[36px] flex items-center justify-center">
                   <Trash2 className="size-3.5" aria-hidden="true" />
                 </button>
               </div>

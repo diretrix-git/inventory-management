@@ -113,7 +113,7 @@ export default function AuditLogsPage() {
     <PageTransition>
       <PageHeader
         title="Audit Logs"
-        description="All system actions, most recent first."
+        description="All system actions are logged here. Use the Filters button to narrow by action type or date range."
         action={
           <Button
             variant={showFilters ? "default" : "outline"}

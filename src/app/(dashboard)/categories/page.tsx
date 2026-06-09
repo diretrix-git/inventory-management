@@ -141,7 +141,7 @@ export default function CategoriesPage() {
     <PageTransition>
       <PageHeader
         title="Categories"
-        description="Create and manage product categories. Changes are saved to the database."
+        description="Add and manage product categories. Assign categories to products when creating or editing them."
       />
 
       <div className="mx-auto max-w-2xl space-y-6">
