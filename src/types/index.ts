@@ -17,12 +17,12 @@ export interface IProduct {
   _id: string | Types.ObjectId;
   name: string;
   sku?: string;        // optional — auto-generated at creation if not provided
-  category?: string;
+  category: string;   // required
   description?: string;
   price: number;
   quantity: number;
   lowStockThreshold: number;
-  supplierId?: string | Types.ObjectId;
+  supplierId: string | Types.ObjectId;  // required
   imageUrl?: string;
   isLowStock?: boolean;
   createdAt: Date;

@@ -18,6 +18,7 @@ import { CloudinaryUpload } from "@/components/shared/CloudinaryUpload";
 import { CategorySelect } from "@/components/shared/CategorySelect";
 import { SupplierSelect } from "@/components/shared/SupplierSelect";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { CsvImport } from "@/components/products/CsvImport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,12 +36,12 @@ type ProductRow = Omit<IProduct, "_id"> & { _id: string; isLowStock?: boolean; s
 const productSchema = z.object({
   name: z.string().min(1, "Name is required").max(200, "Name too long"),
   sku: z.string().max(50, "SKU too long").optional(),
-  category: z.string().max(100, "Category too long").optional(),
+  category: z.string().min(1, "Category is required").max(100, "Category too long"),
   description: z.string().optional(),
   price: z.preprocess((v) => parseFloat(String(v)), z.number().min(0, "Price must be ≥ 0")),
   quantity: z.preprocess((v) => parseInt(String(v), 10), z.number().int("Must be a whole number").min(0, "Quantity must be ≥ 0")),
   lowStockThreshold: z.preprocess((v) => parseInt(String(v), 10), z.number().int("Must be a whole number").min(0, "Must be ≥ 0")),
-  supplierId: z.string().optional(),
+  supplierId: z.string().min(1, "Supplier is required"),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -164,7 +165,7 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
 
           {/* Category — dropdown with add new */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-category">Category <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
+            <Label htmlFor="p-category">Category <span className="text-destructive" aria-hidden="true">*</span></Label>
             <Controller
               name="category"
               control={control}
@@ -178,11 +179,12 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
                 />
               )}
             />
+            {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
           </div>
 
           {/* Supplier — searchable dropdown with inline add */}
           <div className="flex flex-col gap-1.5">
-            <Label>Supplier <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
+            <Label>Supplier <span className="text-destructive" aria-hidden="true">*</span></Label>
             <Controller
               name="supplierId"
               control={control}
@@ -193,7 +195,8 @@ function ProductSheet({ open, onClose, editProduct, onSuccess, categories, onAdd
                 />
               )}
             />
-            <p className="text-xs text-muted-foreground">Link this product to its supplier. You can add a new supplier inline.</p>
+            {errors.supplierId && <p className="text-xs text-destructive">{errors.supplierId.message}</p>}
+            <p className="text-xs text-muted-foreground">Can&apos;t find your supplier? Add a new one inline from the dropdown.</p>
           </div>
 
           {/* Price & Quantity */}
@@ -462,10 +465,13 @@ export default function ProductsPage() {
         title="Products"
         description="Manage your product catalog. Price filters apply as you type."
         action={isAdmin ? (
-          <Button onClick={() => { setEditProduct(null); setSheetOpen(true); }}>
-            <Plus className="size-4" aria-hidden="true" />
-            New Product
-          </Button>
+          <div className="flex items-center gap-2">
+            <CsvImport onSuccess={fetchProducts} />
+            <Button onClick={() => { setEditProduct(null); setSheetOpen(true); }}>
+              <Plus className="size-4" aria-hidden="true" />
+              New Product
+            </Button>
+          </div>
         ) : undefined}
       />
 

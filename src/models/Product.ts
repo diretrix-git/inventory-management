@@ -5,12 +5,12 @@ const productSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true, trim: true, maxlength: 200 },
     sku: { type: String, unique: true, sparse: true, uppercase: true, trim: true, maxlength: 50 },
-    category: { type: String, trim: true, maxlength: 100 },
+    category: { type: String, required: true, trim: true, maxlength: 100 },
     description: { type: String },
     price: { type: Number, required: true, min: 0 },
     quantity: { type: Number, required: true, min: 0, default: 0 },
     lowStockThreshold: { type: Number, required: true, min: 0, default: 10 },
-    supplierId: { type: Schema.Types.ObjectId, ref: "Supplier" },
+    supplierId: { type: Schema.Types.ObjectId, ref: "Supplier", required: true },
     imageUrl: { type: String },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

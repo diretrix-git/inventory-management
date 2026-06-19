@@ -28,13 +28,13 @@ async function generateSku(): Promise<string> {
 
 const createProductSchema = z.object({
   name: z.string().min(1).max(200),
-  sku: z.string().max(50).optional(), // optional — auto-generated if not provided
-  category: z.string().max(100).optional(),
+  sku: z.string().max(50).optional(),
+  category: z.string().min(1, "Category is required").max(100),
   description: z.string().optional(),
   price: z.number().min(0),
   quantity: z.number().int().min(0),
   lowStockThreshold: z.number().int().min(0).default(10),
-  supplierId: z.string().optional(),
+  supplierId: z.string().min(1, "Supplier is required"),
   imageUrl: z.string().optional(),
 });
 
