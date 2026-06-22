@@ -18,8 +18,13 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Inventory Management",
-  description: "Inventory and sales management system",
+  title: "Mini-Mart IMS",
+  description: "Mini-Mart Inventory and Sales Management System",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

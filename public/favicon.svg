@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background rounded square -->
+  <rect width="32" height="32" rx="7" fill="#185FA5"/>
+  <!-- Box/package icon (white) -->
+  <!-- Bottom box body -->
+  <rect x="7" y="16" width="18" height="11" rx="1.5" fill="white" opacity="0.9"/>
+  <!-- Box lid -->
+  <rect x="6" y="13" width="20" height="4" rx="1.5" fill="white"/>
+  <!-- Lid center tab -->
+  <rect x="13" y="11" width="6" height="4" rx="1" fill="white" opacity="0.85"/>
+  <!-- Center line on lid -->
+  <rect x="15.5" y="13.5" width="1" height="7" rx="0.5" fill="#185FA5" opacity="0.4"/>
+  <!-- Vertical lines on box body suggesting shelves/inventory -->
+  <rect x="11" y="18.5" width="1" height="6" rx="0.5" fill="#185FA5" opacity="0.2"/>
+  <rect x="20" y="18.5" width="1" height="6" rx="0.5" fill="#185FA5" opacity="0.2"/>
+</svg>

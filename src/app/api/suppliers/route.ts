@@ -11,9 +11,9 @@ import { auth } from "../../../../auth";
 
 const createSupplierSchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
-  contactPerson: z.string().max(100).optional(),
+  contactPerson: z.string().min(1, "Contact person is required").max(100),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
-  phone: z.string().max(30).optional(),
+  phone: z.string().min(1, "Phone number is required").max(30),
   address: z.string().max(500).optional(),
   notes: z.string().optional(),
 });

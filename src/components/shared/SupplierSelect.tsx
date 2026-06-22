@@ -97,9 +97,9 @@ export function SupplierSelect({ value, onChange, disabled = false, className }:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newName.trim(),
-          contactPerson: newContact.trim() || undefined,
+          contactPerson: newContact.trim(),
           email: newEmail.trim() || undefined,
-          phone: newPhone.trim() || undefined,
+          phone: newPhone.trim(),
         }),
       });
       const json = await res.json();
@@ -256,7 +256,9 @@ export function SupplierSelect({ value, onChange, disabled = false, className }:
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">Contact person</label>
+                <label className="text-xs text-muted-foreground">
+                  Contact person <span className="text-destructive" aria-hidden="true">*</span>
+                </label>
                 <input
                   type="text"
                   value={newContact}
@@ -267,7 +269,7 @@ export function SupplierSelect({ value, onChange, disabled = false, className }:
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-muted-foreground">Email</label>
+                  <label className="text-xs text-muted-foreground">Email <span className="text-[10px] text-muted-foreground/60">(optional)</span></label>
                   <input
                     type="email"
                     value={newEmail}
@@ -277,12 +279,14 @@ export function SupplierSelect({ value, onChange, disabled = false, className }:
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-muted-foreground">Phone</label>
+                  <label className="text-xs text-muted-foreground">
+                    Phone <span className="text-destructive" aria-hidden="true">*</span>
+                  </label>
                   <input
                     type="tel"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
-                    placeholder="+977 ..."
+                    placeholder="+977 98XXXXXXXX"
                     className="h-7 w-full rounded-md border border-input bg-background px-2.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
@@ -291,7 +295,7 @@ export function SupplierSelect({ value, onChange, disabled = false, className }:
               <button
                 type="button"
                 onClick={handleAddSupplier}
-                disabled={!newName.trim() || isSaving}
+                disabled={!newName.trim() || !newContact.trim() || !newPhone.trim() || isSaving}
                 className="mt-1 flex items-center justify-center gap-1.5 h-7 w-full rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
                 {isSaving ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : <Plus className="size-3" aria-hidden="true" />}

@@ -27,9 +27,9 @@ type SupplierRow = Omit<ISupplier, "_id"> & { _id: string; productCount: number 
 
 const supplierSchema = z.object({
   name: z.string().min(1, "Name is required").max(200, "Name too long"),
-  contactPerson: z.string().max(100, "Too long").optional(),
+  contactPerson: z.string().min(1, "Contact person is required").max(100, "Too long"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
-  phone: z.string().max(30, "Too long").optional(),
+  phone: z.string().min(1, "Phone number is required").max(30, "Too long"),
   address: z.string().max(500, "Too long").optional(),
   notes: z.string().optional(),
 });
@@ -117,23 +117,25 @@ function SupplierSheet({ open, onClose, editSupplier, onSuccess }: SupplierSheet
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="s-contact">Contact Person</Label>
-            <Input id="s-contact" type="text" placeholder="Full name" {...register("contactPerson")} />
+            <Label htmlFor="s-contact">Contact Person <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <Input id="s-contact" type="text" placeholder="Full name" aria-invalid={!!errors.contactPerson} {...register("contactPerson")} />
+            {errors.contactPerson && <p className="text-xs text-destructive">{errors.contactPerson.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="s-email">Email</Label>
+            <Label htmlFor="s-phone">Phone <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <Input id="s-phone" type="tel" placeholder="+977 98XXXXXXXX" aria-invalid={!!errors.phone} {...register("phone")} />
+            {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="s-email">Email <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
             <Input id="s-email" type="email" placeholder="contact@supplier.com" aria-invalid={!!errors.email} {...register("email")} />
             {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="s-phone">Phone</Label>
-            <Input id="s-phone" type="tel" placeholder="+1 555 000 0000" {...register("phone")} />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="s-address">Address</Label>
+            <Label htmlFor="s-address">Address <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
             <textarea id="s-address" rows={3} placeholder="Street, City, Country" className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none" {...register("address")} />
           </div>
 

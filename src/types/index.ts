@@ -31,9 +31,9 @@ export interface IProduct {
 export interface ISupplier {
   _id: string | Types.ObjectId;
   name: string;
-  contactPerson?: string;
+  contactPerson: string;   // required
   email?: string;
-  phone?: string;
+  phone: string;           // required
   address?: string;
   notes?: string;
   createdAt: Date;
