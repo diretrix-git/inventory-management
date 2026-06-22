@@ -60,7 +60,11 @@ export function NotificationBell() {
         const payload = JSON.parse(event.data) as { type: string; notification: NotifRow };
         if (payload.type === "notification") {
           const notif = { ...payload.notification, _id: String(payload.notification._id) };
-          setNotifications((prev) => [notif, ...prev].slice(0, 50));
+          // Deduplicate — only add if we don't already have this ID
+          setNotifications((prev) => {
+            if (prev.some((n) => n._id === notif._id)) return prev;
+            return [notif, ...prev].slice(0, 50);
+          });
           setUnreadCount((c) => c + 1);
         }
       } catch { /* ignore malformed */ }
