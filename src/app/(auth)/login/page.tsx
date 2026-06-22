@@ -53,6 +53,8 @@ export default function LoginPage() {
       if (result?.error) {
         if (/disabled/i.test(result.error)) {
           setAuthError("Account disabled. Please contact your administrator.");
+        } else if (/too many/i.test(result.error) || result.status === 429) {
+          setAuthError("Too many login attempts. Please wait 60 seconds and try again.");
         } else {
           setAuthError("Email or password is incorrect.");
         }
