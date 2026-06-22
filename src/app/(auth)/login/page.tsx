@@ -44,6 +44,21 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
+      // Call the credentials API directly to get the actual error message
+      // Auth.js v5 strips custom errors, so we check the DB state ourselves
+      const res = await fetch("/api/auth/check-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setAuthError(json.error ?? "Email or password is incorrect.");
+        return;
+      }
+
+      // Credentials are valid — now sign in via Auth.js
       const result = await signIn("credentials", {
         email: data.email,
         password: data.password,
@@ -51,22 +66,13 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        if (/disabled/i.test(result.error)) {
-          setAuthError("Account disabled. Please contact your administrator.");
-        } else if (/locked/i.test(result.error) || /too many/i.test(result.error) || result.status === 429) {
-          // Extract the message from the error — Auth.js wraps it in the error string
-          const match = result.error.match(/locked for \d+ minutes?|Try again in \d+ minutes?/i);
-          setAuthError(match
-            ? `Too many failed attempts. ${match[0]}.`
-            : "Too many failed login attempts. Please wait 15 minutes and try again."
-          );
-        } else {
-          setAuthError("Email or password is incorrect.");
-        }
+        setAuthError("Email or password is incorrect.");
         return;
       }
 
       router.push("/dashboard");
+    } catch {
+      setAuthError("Connection error. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
