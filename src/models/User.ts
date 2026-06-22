@@ -9,6 +9,8 @@ const userSchema = new Schema<IUser>(
     role: { type: String, enum: ["admin", "staff"], required: true },
     isActive: { type: Boolean, default: true },
     image: { type: String },
+    loginAttempts: { type: Number, default: 0 },
+    lockedUntil: { type: Date, default: null },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

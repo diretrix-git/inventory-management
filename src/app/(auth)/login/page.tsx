@@ -53,8 +53,13 @@ export default function LoginPage() {
       if (result?.error) {
         if (/disabled/i.test(result.error)) {
           setAuthError("Account disabled. Please contact your administrator.");
-        } else if (/too many/i.test(result.error) || result.status === 429) {
-          setAuthError("Too many login attempts. Please wait 60 seconds and try again.");
+        } else if (/locked/i.test(result.error) || /too many/i.test(result.error) || result.status === 429) {
+          // Extract the message from the error — Auth.js wraps it in the error string
+          const match = result.error.match(/locked for \d+ minutes?|Try again in \d+ minutes?/i);
+          setAuthError(match
+            ? `Too many failed attempts. ${match[0]}.`
+            : "Too many failed login attempts. Please wait 15 minutes and try again."
+          );
         } else {
           setAuthError("Email or password is incorrect.");
         }

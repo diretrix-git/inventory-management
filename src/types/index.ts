@@ -10,6 +10,8 @@ export interface IUser {
   role: Role;
   isActive: boolean;
   image?: string;
+  loginAttempts: number;
+  lockedUntil?: Date | null;
   createdAt: Date;
 }
 

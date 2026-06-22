@@ -7,7 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/errors";
 
-import { Plus, Pencil, UserX, UserCheck, X, Loader2 } from "lucide-react";
+import { Plus, Pencil, UserX, UserCheck, X, Loader2, Unlock } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -26,7 +26,6 @@ import type { IUser } from "@/types";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type UserRow = Omit<IUser, "_id"> & { _id: string };
-
 // ─── Zod schemas ─────────────────────────────────────────────────────────────
 
 const createSchema = z.object({
@@ -420,9 +419,20 @@ export default function UsersPage() {
     {
       accessorKey: "isActive",
       header: "Status",
-      cell: ({ row }) => (
-        <StatusBadge status={row.original.isActive ? "active" : "inactive"} />
-      ),
+      cell: ({ row }) => {
+        const u = row.original;
+        const isLocked = u.lockedUntil && new Date(u.lockedUntil) > new Date();
+        return (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusBadge status={u.isActive ? "active" : "inactive"} />
+            {isLocked && (
+              <span className="inline-flex items-center rounded-full border border-warning/30 bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
+                🔒 Locked
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "createdAt",
@@ -485,6 +495,27 @@ export default function UsersPage() {
                       )}
                     </Button>
                   </Tooltip>
+                  {/* Show unlock button if account is temporarily locked */}
+                  {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                    <Tooltip content="Unlock account (locked due to failed logins)">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const res = await fetch(`/api/users/${user._id}/unlock`, { method: "POST" });
+                          const json = await res.json();
+                          if (!res.ok) { toast.error(json.error ?? "Failed to unlock"); return; }
+                          toast.success(`Account unlocked for ${user.name}`);
+                          await fetchUsers();
+                        }}
+                        aria-label={`Unlock ${user.name}`}
+                        className="text-warning hover:text-warning hover:bg-warning/10"
+                      >
+                        <Unlock className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    </Tooltip>
+                  )}
                 </div>
               );
             },
