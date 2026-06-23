@@ -144,14 +144,11 @@ export async function PUT(
     }
     // Restore stock on cancellation of a confirmed order (stock was already deducted)
     else if (newStatus === "cancelled" && currentStatus === "confirmed") {
-      const wasStockDeducted = !(order as unknown as { requiresApproval?: boolean }).requiresApproval
-        || currentStatus === "confirmed";
-      if (wasStockDeducted) {
-        for (const item of order.items) {
-          await Product.findByIdAndUpdate(item.productId, {
-            $inc: { quantity: item.quantity },
-          });
-        }
+      // Stock was deducted when the order reached "confirmed" status, so always restore it
+      for (const item of order.items) {
+        await Product.findByIdAndUpdate(item.productId, {
+          $inc: { quantity: item.quantity },
+        });
       }
       // Notify the order creator of cancellation
       notify({

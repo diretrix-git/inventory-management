@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { Order } from "@/models/Order";
-import { Invoice } from "@/models/Invoice";
 import { Product } from "@/models/Product";
 import { auth } from "../../../../auth";
 
@@ -32,8 +31,9 @@ export async function GET(req: NextRequest) {
         recentlySoldProducts,
         recentOrders,
       ] = await Promise.all([
-        Invoice.aggregate([
-          { $match: { status: "issued", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
+        // Revenue from confirmed orders only — pending orders must not count
+        Order.aggregate([
+          { $match: { status: "confirmed", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
           { $group: { _id: null, total: { $sum: "$totalAmount" } } },
         ]),
         Order.countDocuments({ status: "pending" }),
@@ -73,9 +73,9 @@ export async function GET(req: NextRequest) {
       recentOrders,
       topProducts,
     ] = await Promise.all([
-      // Today's revenue from confirmed invoices
-      Invoice.aggregate([
-        { $match: { status: "issued", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
+      // Revenue from confirmed orders only — pending/cancelled must not count
+      Order.aggregate([
+        { $match: { status: "confirmed", createdAt: { $gte: startOfToday, $lte: endOfToday } } },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]),
       // Today's confirmed orders
