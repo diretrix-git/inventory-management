@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { friendlyError } from "@/lib/errors";
+import { createIdempotencyKey } from "@/lib/idempotency-key";
 import type { IProduct } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -242,10 +243,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       notes: data.notes,
       items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity })),
     });
-    if (!submission.current || submission.current.payload !== payload) {
-      submission.current = { payload, key: crypto.randomUUID() };
-    }
     try {
+      if (!submission.current || submission.current.payload !== payload) {
+        submission.current = { payload, key: createIdempotencyKey() };
+      }
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": submission.current.key },

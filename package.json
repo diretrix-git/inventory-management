@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed": "tsx --env-file=.env.local scripts/seed.ts",
     "test": "node --import tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:browser": "node --test tests/browser/*.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.5.0",
@@ -45,6 +46,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
+    "playwright": "1.62.1",
     "tailwindcss": "4.3.0",
     "tsx": "4.22.3",
     "typescript": "5.9.3"

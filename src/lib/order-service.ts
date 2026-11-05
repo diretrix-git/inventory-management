@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { Order } from '@/models/Order';
 import { Product } from '@/models/Product';
 import { Invoice } from '@/models/Invoice';
@@ -53,14 +54,19 @@ async function requireUniqueIndexes() {
   await Invoice.init();
   const orders = await Order.collection.listIndexes().toArray();
   const invoices = await Invoice.collection.listIndexes().toArray();
-  const unique = (indexes: typeof orders, fields: string[]) => indexes.some(index =>
-    index.unique && Object.keys(index.key).length === fields.length && fields.every(field => index.key[field] === 1));
-  const requestIndex = orders.some(index => index.unique &&
-    Object.keys(index.key).length === 2 && index.key.createdBy === 1 && index.key.idempotencyKey === 1 &&
-    index.partialFilterExpression?.idempotencyKey?.$type === 'string');
-  if (!unique(orders, ['orderNumber']) || !unique(invoices, ['invoiceNumber']) ||
-      !unique(invoices, ['orderId']) || !requestIndex) {
-    throw new OrderError('Required order indexes are missing; run prepare-order-storage', 503);
+  // Match the complete supported contract, not just a subset of the filter.
+  // Extra predicates can exclude pending orders and permit duplicate requests.
+  const supported = (index: (typeof orders)[number], fields: string[], partialFilter?: Record<string, unknown>) =>
+    index.unique === true && index.sparse !== true && index.expireAfterSeconds === undefined &&
+    (!index.collation || index.collation.locale === 'simple') &&
+    isDeepStrictEqual(Object.entries(index.key), fields.map(field => [field, 1])) &&
+    isDeepStrictEqual(index.partialFilterExpression, partialFilter);
+  const requestFilter = { idempotencyKey: { $type: 'string' } };
+  if (!orders.some(index => supported(index, ['orderNumber'])) ||
+      !invoices.some(index => supported(index, ['invoiceNumber'])) ||
+      !invoices.some(index => supported(index, ['orderId'])) ||
+      !orders.some(index => supported(index, ['createdBy', 'idempotencyKey'], requestFilter))) {
+    throw new OrderError('Required order indexes are missing or incompatible; run prepare-order-storage', 503);
   }
 }
 

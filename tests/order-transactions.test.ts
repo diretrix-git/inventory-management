@@ -24,7 +24,7 @@ beforeEach(async () => {
 async function product(quantity = 1, price = 100) {
   return Product.create({ name: 'Synthetic item', sku: randomUUID(), category: 'test', supplierId: new mongoose.Types.ObjectId(), quantity, price });
 }
-function input(id: unknown, key = randomUUID()) {
+function input(id: unknown, key: string = randomUUID()) {
   return { customerName: 'Synthetic customer', items: [{ productId: String(id), quantity: 1 }], idempotencyKey: key };
 }
 function successes(results: PromiseSettledResult<unknown>[]) {
@@ -162,4 +162,71 @@ test('missing idempotency index fails closed without stock or order writes', asy
   } finally {
     await Order.createIndexes();
   }
+});
+
+// Each alternate index is created on the real server, not mocked metadata.
+const incompatibleIndexes = [
+  { name: 'status-filtered creation key', model: Order, indexName: 'createdBy_1_idempotencyKey_1', key: { createdBy: 1, idempotencyKey: 1 }, options: { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' }, status: 'confirmed' } } },
+  { name: 'partial order number', model: Order, indexName: 'orderNumber_1', key: { orderNumber: 1 }, options: { unique: true, partialFilterExpression: { status: 'confirmed' } } },
+  { name: 'partial invoice number', model: Invoice, indexName: 'invoiceNumber_1', key: { invoiceNumber: 1 }, options: { unique: true, partialFilterExpression: { totalAmount: { $gte: 15000 } } } },
+  { name: 'partial invoice order ID', model: Invoice, indexName: 'orderId_1', key: { orderId: 1 }, options: { unique: true, partialFilterExpression: { totalAmount: { $gte: 15000 } } } },
+  { name: 'nonunique creation key', model: Order, indexName: 'createdBy_1_idempotencyKey_1', key: { createdBy: 1, idempotencyKey: 1 }, options: { partialFilterExpression: { idempotencyKey: { $type: 'string' } } } },
+  { name: 'reversed creation key', model: Order, indexName: 'createdBy_1_idempotencyKey_1', key: { idempotencyKey: 1, createdBy: 1 }, options: { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } } },
+  { name: 'extended creation key', model: Order, indexName: 'createdBy_1_idempotencyKey_1', key: { createdBy: 1, idempotencyKey: 1, status: 1 }, options: { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } } },
+  { name: 'sparse order number', model: Order, indexName: 'orderNumber_1', key: { orderNumber: 1 }, options: { unique: true, sparse: true } },
+  { name: 'case-insensitive creation key', model: Order, indexName: 'createdBy_1_idempotencyKey_1', key: { createdBy: 1, idempotencyKey: 1 }, options: { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } }, collation: { locale: 'en', strength: 2 } } },
+] as const;
+for (const configuration of incompatibleIndexes) {
+  test(`incompatible ${configuration.name} rejects all concurrent pending requests without writes`, async () => {
+    const p = await product(100, 15000);
+    const collection = configuration.model.collection;
+    await collection.dropIndex(configuration.indexName);
+    try {
+      await collection.createIndex(configuration.key, { ...configuration.options, name: configuration.indexName });
+      const request = input(p._id);
+      const results = await Promise.allSettled(Array.from({ length: 20 }, () => createOrder(request, actor)));
+      assert.equal(successes(results), 0, 'every request must fail closed under an insufficient index');
+      for (const result of results) {
+        assert.equal(result.status, 'rejected');
+        if (result.status === 'rejected') {
+          assert.equal(result.reason.status, 503);
+          assert.match(result.reason.message, /Required order indexes/);
+        }
+      }
+      assert.equal(await Order.countDocuments(), 0);
+      assert.equal(await Invoice.countDocuments(), 0);
+      assert.equal((await Product.findById(p._id))!.quantity, 100);
+    } finally {
+      await collection.dropIndex(configuration.indexName);
+      await Order.createIndexes();
+      await Invoice.createIndexes();
+    }
+  });
+}
+
+test('legacy headerless clients fail without writes, then upgraded keyed retries create once', async () => {
+  const p = await product(5);
+  for (const key of ['', 'short', 'contains spaces and is invalid']) {
+    await assert.rejects(createOrder(input(p._id, key), actor), error => {
+      assert.equal((error as { status: number }).status, 400);
+      assert.match((error as Error).message, /Idempotency-Key/);
+      return true;
+    });
+  }
+  assert.equal(await Order.countDocuments(), 0);
+  assert.equal(await Invoice.countDocuments(), 0);
+  assert.equal((await Product.findById(p._id))!.quantity, 5);
+  const upgraded = input(p._id);
+  const first = await createOrder(upgraded, actor);
+  const retried = await createOrder(upgraded, actor);
+  assert.equal(first.replayed, false);
+  assert.equal(retried.replayed, true);
+  assert.equal(String(first.order._id), String(retried.order._id));
+  await assert.rejects(createOrder({ ...upgraded, customerName: 'Changed payload' }, actor), error => {
+    assert.equal((error as { status: number }).status, 409);
+    return true;
+  });
+  assert.equal(await Order.countDocuments(), 1);
+  assert.equal(await Invoice.countDocuments(), 1);
+  assert.equal((await Product.findById(p._id))!.quantity, 4);
 });
