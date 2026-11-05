@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
-import { DM_Sans, IBM_Plex_Mono } from "next/font/google";
+import type { CSSProperties } from "react";
+import "@fontsource-variable/dm-sans/wght.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-mono/600.css";
+import "@fontsource/ibm-plex-mono/700.css";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "sonner";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-sans",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-mono",
-});
+// Fontsource CSS retains the original families, weights and Unicode subsets.
+// Assets are bundled by Next.js; neither build nor browser contacts Google.
+const fontVariables = {
+  "--font-sans": '"DM Sans Variable", Arial, sans-serif',
+  "--font-mono": '"IBM Plex Mono", "Courier New", monospace',
+} as CSSProperties;
 
 export const metadata: Metadata = {
   title: "Mini-Mart IMS",
@@ -35,7 +34,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
+      className="h-full antialiased"
+      style={fontVariables}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
