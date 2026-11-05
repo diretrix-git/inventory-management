@@ -51,6 +51,8 @@ export interface IOrderLine {
 }
 
 export interface IOrder {
+  idempotencyKey?: string;
+  requestHash?: string;
   _id: string | Types.ObjectId;
   orderNumber: string;
   items: IOrderLine[];

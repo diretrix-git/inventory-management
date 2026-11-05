@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { Order } from "@/models/Order";
-import { Product } from "@/models/Product";
+import { transitionOrder, OrderError } from "@/lib/order-service";
 import { requireRole } from "@/lib/auth-utils";
 import { logAction } from "@/lib/audit";
 import { notify } from "@/lib/notify";
@@ -48,13 +48,6 @@ const updateOrderSchema = z.object({
   status: z.enum(["confirmed", "cancelled"]),
 });
 
-// Valid transitions map
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  pending: ["confirmed", "cancelled"],
-  confirmed: ["cancelled"],
-  cancelled: [],
-};
-
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -97,33 +90,10 @@ export async function PUT(
   try {
     await connectDB();
 
-    const order = await Order.findById(id);
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
+    const { order, previousStatus: currentStatus } = await transitionOrder(id, newStatus);
 
-    const currentStatus = order.status;
-    const allowedTransitions = VALID_TRANSITIONS[currentStatus] ?? [];
-
-    if (!allowedTransitions.includes(newStatus)) {
-      return NextResponse.json(
-        {
-          error: `Invalid status transition: ${currentStatus} → ${newStatus}. Allowed: ${allowedTransitions.join(", ") || "none"}`,
-        },
-        { status: 400 }
-      );
-    }
-
-    order.status = newStatus;
-    await order.save();
-
-    // When admin confirms a high-value order (requiresApproval=true), deduct stock NOW
-    if (newStatus === "confirmed" && (order as unknown as { requiresApproval?: boolean }).requiresApproval) {
-      for (const item of order.items) {
-        await Product.findByIdAndUpdate(item.productId, {
-          $inc: { quantity: -item.quantity },
-        });
-      }
+    // Side effects run only after a committed transition, outside retryable callbacks.
+    if (newStatus === "confirmed" && order.requiresApproval) {
       // Notify the order creator that their order was approved
       notify({
         userId: String(order.createdBy),
@@ -144,12 +114,6 @@ export async function PUT(
     }
     // Restore stock on cancellation of a confirmed order (stock was already deducted)
     else if (newStatus === "cancelled" && currentStatus === "confirmed") {
-      // Stock was deducted when the order reached "confirmed" status, so always restore it
-      for (const item of order.items) {
-        await Product.findByIdAndUpdate(item.productId, {
-          $inc: { quantity: item.quantity },
-        });
-      }
       // Notify the order creator of cancellation
       notify({
         userId: String(order.createdBy),
@@ -180,6 +144,7 @@ export async function PUT(
 
     return NextResponse.json({ order });
   } catch (err) {
+    if (err instanceof OrderError) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error("[PUT /api/orders/[id]]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

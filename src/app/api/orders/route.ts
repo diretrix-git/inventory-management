@@ -1,17 +1,12 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { createOrder, OrderError } from "@/lib/order-service";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { Order } from "@/models/Order";
-import { Product } from "@/models/Product";
-import { Invoice } from "@/models/Invoice";
-import { SystemSettings } from "@/models/SystemSettings";
-import { requireRole } from "@/lib/auth-utils";
 import { logAction } from "@/lib/audit";
-import { generateOrderNumber, generateInvoiceNumber } from "@/lib/order-utils";
 import { sendOrderEmails } from "@/lib/email";
 import { notify } from "@/lib/notify";
 import { auth } from "../../../../auth";
-import mongoose from "mongoose";
 
 // ─── GET /api/orders ──────────────────────────────────────────────────────────
 // All roles — paginated, searchable
@@ -100,146 +95,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { customerName, customerEmail, items, notes } = parsed.data;
+  const { customerName, customerEmail } = parsed.data;
 
   try {
     await connectDB();
 
-    // Fetch all products in the cart
-    const productIds = items.map((i) => i.productId);
-    const products = await Product.find({ _id: { $in: productIds } });
-
-    // Validate all products exist
-    if (products.length !== productIds.length) {
-      return NextResponse.json({ error: "One or more products not found" }, { status: 400 });
+    const result = await createOrder({ ...parsed.data, idempotencyKey: req.headers.get("Idempotency-Key") ?? "" }, session.user.id);
+    const { order } = result;
+    if (result.replayed) {
+      return NextResponse.json({ order, requiresApproval: order.requiresApproval, replayed: true });
     }
-
-    // Validate stock availability
-    const outOfStock: string[] = [];
-    for (const item of items) {
-      const product = products.find((p) => String(p._id) === item.productId);
-      if (!product) continue;
-      if (product.quantity < item.quantity) {
-        outOfStock.push(`${product.name} (available: ${product.quantity}, requested: ${item.quantity})`);
-      }
-    }
-    if (outOfStock.length > 0) {
-      return NextResponse.json(
-        { error: `Insufficient stock: ${outOfStock.join("; ")}` },
-        { status: 400 }
-      );
-    }
-
-    // Get system settings for tax rate and business info
-    const settings = await SystemSettings.findOne({}).lean() ?? {
-      taxRate: 0,
-      businessName: "My Business",
-      businessAddress: "",
-    };
-
-    const now = new Date();
-    const [orderNumber, invoiceNumber] = await Promise.all([
-      generateOrderNumber(now),
-      generateInvoiceNumber(now),
-    ]);
-
-    // Build order lines
-    const orderItems = items.map((item) => {
-      const product = products.find((p) => String(p._id) === item.productId)!;
-      const lineTotal = product.price * item.quantity;
-      return {
-        productId: product._id,
-        productName: product.name,
-        sku: product.sku ?? "",
-        quantity: item.quantity,
-        unitPrice: product.price,
-        lineTotal,
-      };
-    });
-
-    const subtotal = orderItems.reduce((sum, l) => sum + l.lineTotal, 0);
-    const taxRate = settings.taxRate / 100;
-    const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
-    const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
-
-    // ── Approval threshold ───────────────────────────────────────────────────
-    // Orders ≥ 15,000 require admin approval — stock is NOT deducted until approved
-    const APPROVAL_THRESHOLD = 15000;
-    const requiresApproval = totalAmount >= APPROVAL_THRESHOLD;
-    // Auto-confirm orders below threshold
-    const initialStatus = requiresApproval ? "pending" : "confirmed";
-
-    // ── MongoDB transaction ──────────────────────────────────────────────────
-    const dbSession = await mongoose.startSession();
-    let order: InstanceType<typeof Order> | null = null;
-
-    try {
-      await dbSession.withTransaction(async () => {
-        // 1. Create order
-        const [createdOrder] = await Order.create(
-          [
-            {
-              orderNumber,
-              items: orderItems,
-              subtotal,
-              taxRate: settings.taxRate,
-              taxAmount,
-              totalAmount,
-              status: initialStatus,
-              requiresApproval,
-              customerName: customerName.trim(),
-              customerEmail: customerEmail?.trim() || undefined,
-              notes,
-              createdBy: session.user.id,
-            },
-          ],
-          { session: dbSession }
-        );
-        order = createdOrder;
-
-        // 2. Deduct stock ONLY for auto-confirmed orders (below threshold)
-        //    For orders requiring approval, stock is deducted when admin confirms
-        if (!requiresApproval) {
-          for (const item of items) {
-            await Product.findByIdAndUpdate(
-              item.productId,
-              { $inc: { quantity: -item.quantity } },
-              { session: dbSession }
-            );
-          }
-        }
-
-        // 3. Create invoice snapshot (always — even for pending approval orders)
-        await Invoice.create(
-          [
-            {
-              invoiceNumber,
-              orderId: createdOrder._id,
-              issuedTo: customerName.trim(),
-              items: orderItems.map((l) => ({
-                productName: l.productName,
-                sku: l.sku,
-                quantity: l.quantity,
-                unitPrice: l.unitPrice,
-                lineTotal: l.lineTotal,
-              })),
-              subtotal,
-              taxRate: settings.taxRate,
-              taxAmount,
-              totalAmount,
-              status: "issued",
-            },
-          ],
-          { session: dbSession }
-        );
-      });
-    } finally {
-      await dbSession.endSession();
-    }
-
-    if (!order) {
-      return NextResponse.json({ error: "Order creation failed" }, { status: 500 });
-    }
+    const { orderNumber, totalAmount, requiresApproval, items: orderItems, subtotal, taxRate, taxAmount } = order;
+    const { invoiceNumber, settings } = result;
 
     // Fire-and-forget notifications
     if (requiresApproval) {
@@ -282,11 +149,11 @@ export async function POST(req: NextRequest) {
       customerEmail: customerEmail?.trim() || undefined,
       items: orderItems,
       subtotal,
-      taxRate: settings.taxRate,
+      taxRate,
       taxAmount,
       totalAmount,
-      businessName: settings.businessName ?? "My Business",
-      businessAddress: settings.businessAddress ?? "",
+      businessName: settings?.businessName ?? "My Business",
+      businessAddress: settings?.businessAddress ?? "",
     });
 
     return NextResponse.json({
@@ -297,6 +164,7 @@ export async function POST(req: NextRequest) {
         : `Order ${orderNumber} confirmed automatically.`,
     }, { status: 201 });
   } catch (err) {
+    if (err instanceof OrderError) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error("[POST /api/orders]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

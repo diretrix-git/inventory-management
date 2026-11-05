@@ -1,46 +1,35 @@
-import { Order } from "@/models/Order";
-import { Invoice } from "@/models/Invoice";
+import { Order } from '@/models/Order';
+import { Invoice } from '@/models/Invoice';
+import { Sequence } from '@/models/Sequence';
 
-/**
- * Formats a date as YYYYMMDD for use in order/invoice numbers.
+/** Atomic daily allocation. Gaps after failed requests are intentional.
+ * Initialize above the largest legacy suffix, never the document count.
+ * Allocate outside business transactions so a fresh counter's upsert race can
+ * be resolved without continuing an aborted transaction.
  */
-function formatDateSegment(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
+async function allocate(kind: 'ORD' | 'INV', date: Date): Promise<string> {
+  const day = date.toISOString().slice(0, 10).replaceAll('-', '');
+  const prefix = `${kind}-${day}-`;
+  if (!await Sequence.exists({ _id: prefix })) {
+    const field = kind === 'ORD' ? 'orderNumber' : 'invoiceNumber';
+    const collection = kind === 'ORD' ? Order.collection : Invoice.collection;
+    const [legacy] = await collection.aggregate<{ maximum: number }>([
+      { $match: { [field]: { $regex: `^${prefix}[0-9]+$` } } },
+      { $project: { value: { $convert: { input: { $substrBytes: [`$${field}`, prefix.length, -1] }, to: 'double', onError: 0 } } } },
+      { $group: { _id: null, maximum: { $max: '$value' } } },
+    ]).toArray();
+    try {
+      await Sequence.create({ _id: prefix, value: legacy?.maximum ?? 0 });
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error;
+    }
+  }
+  const sequence = await Sequence.findOneAndUpdate(
+    { _id: prefix }, { $inc: { value: 1 } }, { returnDocument: 'after' },
+  ).lean();
+  if (!sequence) throw new Error('Identifier counter missing');
+  return `${prefix}${String(sequence.value).padStart(4, '0')}`;
 }
 
-/**
- * Generates the next order number in ORD-YYYYMMDD-XXXX format.
- * The sequence resets per day and is zero-padded to 4 digits.
- * Requires an active DB connection before calling.
- */
-export async function generateOrderNumber(date: Date = new Date()): Promise<string> {
-  const dateSegment = formatDateSegment(date);
-  const prefix = `ORD-${dateSegment}-`;
-
-  // Count existing orders for today to determine next sequence number
-  const count = await Order.countDocuments({
-    orderNumber: { $regex: `^${prefix}` },
-  });
-
-  const sequence = String(count + 1).padStart(4, "0");
-  return `${prefix}${sequence}`;
-}
-
-/**
- * Generates the next invoice number in INV-YYYYMMDD-XXXX format.
- * Requires an active DB connection before calling.
- */
-export async function generateInvoiceNumber(date: Date = new Date()): Promise<string> {
-  const dateSegment = formatDateSegment(date);
-  const prefix = `INV-${dateSegment}-`;
-
-  const count = await Invoice.countDocuments({
-    invoiceNumber: { $regex: `^${prefix}` },
-  });
-
-  const sequence = String(count + 1).padStart(4, "0");
-  return `${prefix}${sequence}`;
-}
+export const generateOrderNumber = (date = new Date()) => allocate('ORD', date);
+export const generateInvoiceNumber = (date = new Date()) => allocate('INV', date);
