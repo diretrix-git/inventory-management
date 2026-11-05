@@ -1,6 +1,6 @@
 # Mini-Mart Inventory Management System
 
-A full-stack internal web application for managing a mini-mart — products, suppliers, orders, invoices, analytics, and staff management.
+A full-stack internal web application for managing a mini-mart: products, suppliers, orders, invoices, analytics, and staff management.
 
 ---
 
@@ -9,16 +9,16 @@ A full-stack internal web application for managing a mini-mart — products, sup
 | Module | What it does |
 |---|---|
 | **Products** | CRUD with required category/supplier, Cloudinary image upload (WebP optimized), auto-generated SKUs (read-only after creation), low-stock alerts, **CSV bulk import** |
-| **Suppliers** | Full CRUD — name, contact person (required), phone (required), email/address optional; inline-add from product form |
+| **Suppliers** | Full CRUD: name, contact person (required), phone (required), email/address optional; inline-add from product form |
 | **Categories** | Full CRUD stored in MongoDB; inline-add from product form |
-| **Orders** | Product grid/cart UI, Rs 15,000 approval threshold, atomic stock deduction, email notifications |
+| **Orders** | Product grid/cart UI, Rs 15,000 approval threshold, transactional creation with stock-consistency limitations, email notifications |
 | **Invoices** | Auto-generated per order; PDF download; email to customer |
 | **Users** | Admin creates/deactivates staff; account lockout after 5 failed logins (15 min); admin can unlock |
-| **Dashboard** | Role-aware — Admin: today's revenue/orders/approvals/low-stock; Staff: sales/pending/quick actions |
+| **Dashboard** | Role-aware: Admin: today's revenue/orders/approvals/low-stock; Staff: sales/pending/quick actions |
 | **Analytics** | 5-section analytics: sales growth, best/dying products, inventory health, order flow, staff performance |
 | **Reports** | Inventory report + Sales report with date range and CSV export |
 | **Notifications** | Real-time SSE in-app + Gmail email on order events |
-| **Audit Logs** | Every mutation logged — filterable by action type and date range |
+| **Audit Logs** | Best-effort mutation logging; filterable by action type and date range; persistence failures are logged |
 | **Settings** | Business name, address, tax rate, low-stock threshold |
 
 ---
@@ -29,8 +29,8 @@ A full-stack internal web application for managing a mini-mart — products, sup
 - **Rate limiting:** Max 10 login attempts per IP per 60 seconds
 - **Password hashing:** bcrypt 12 rounds
 - **JWT sessions:** HttpOnly cookie, 24-hour expiry
-- **Role-based access:** 3 layers — middleware, API guard (`requireRole`), UI rendering
-- **No OAuth** — all accounts created by admin only
+- **Role-based access:** 3 layers: middleware, API guard (`requireRole`), UI rendering
+- **No OAuth**: all accounts created by admin only
 
 ---
 
@@ -60,8 +60,8 @@ A full-stack internal web application for managing a mini-mart — products, sup
 ### Prerequisites
 - Node.js 20+
 - MongoDB Atlas account (free tier works)
-- Cloudinary account (optional — for product/profile images)
-- Gmail App Password (optional — for email notifications)
+- Cloudinary account (optional, for product/profile images)
+- Gmail App Password (optional, for email notifications)
 
 ### 1. Clone and install
 ```bash
@@ -72,10 +72,10 @@ npm install
 
 ### 2. Configure environment
 ```bash
-cp .env.local.example .env.local
+# Create .env.local in the repository root, then add the values below.
 ```
 
-Edit `.env.local` with your values:
+Create `.env.local` with your values. This revision does not track `.env.local.example`:
 ```env
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/inventory
 NEXTAUTH_SECRET=any-random-32-char-string
@@ -101,7 +101,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with your seed c
 
 ## Demo Credentials
 
-> After running `npm run seed` with default `.env.local.example` values:
+> The seed script falls back to these demo values when seed variables are unset. Set your own values before seeding any shared environment:
 
 | Field | Value |
 |---|---|
@@ -167,7 +167,7 @@ src/
 │   ├── notify.ts              # DB notification + SSE push
 │   ├── email.ts               # Gmail SMTP via Nodemailer
 │   ├── insights.ts            # Rule-based analytics insights
-│   ├── errors.ts              # friendlyError() — user-readable messages
+│   ├── errors.ts              # friendlyError(): user-readable messages
 │   └── order-utils.ts         # Order/invoice number generation
 │
 └── models/                    # 9 Mongoose schemas
@@ -200,14 +200,35 @@ src/
 
 ---
 
-## Order Approval Threshold
+## Order Approval Threshold and Stock Effects
 
-Orders totalling **Rs 15,000 or more** require admin confirmation before stock is deducted.
+The source sets an approval boundary at **Rs 15,000**, including tax. The intended stock effects are:
 
-- Below Rs 15,000 → auto-confirmed, stock deducted immediately
-- Rs 15,000 and above → stays pending, admin must confirm, stock deducted on approval
+| Action | Saved state | Stock effect in source |
+| --- | --- | --- |
+| Create below Rs 15,000 | Confirmed | Decrement each item in the creation transaction |
+| Create at or above Rs 15,000 | Pending | No deduction and no reservation |
+| Admin confirms pending order | Confirmed | Save status, then decrement each item |
+| Admin cancels confirmed order | Cancelled | Save status, then restore each item |
+| Admin cancels pending order | Cancelled | No stock restoration |
+
+Creation groups the order, invoice and applicable stock writes in a MongoDB transaction, but reads and checks stock before that transaction. Decrements match the product ID without a fresh quantity condition. Static analysis therefore identifies an overselling risk under concurrent requests. A transaction alone does not establish correct stock availability.
+
+Approval and cancellation save status before separate stock updates. They use a transition map, but no transaction or conditional update on the prior state. Partial failures can separate status from stock, and concurrent requests can repeat stock effects. Approval has no fresh availability check. These are source-derived consequences, not reproduced failures.
+
+Order and invoice numbers use a daily count plus one. Concurrent allocation can produce the same candidate number; schema uniqueness declarations do not supply atomic allocation or retry handling. MongoDB must support transactions for the creation path.
+
+See [source-backed claims](docs/source-backed-claims.md) for pinned implementation references and evidence limits.
 
 ---
+
+## Validation and Evidence
+
+The manifest defines development, build, lint and seed commands, but no test command. No automated test suite was found in the inspected revision. Fresh installation, build, lint, runtime, external-service and deployment checks were **NOT RUN** for this documentation update.
+
+Role guards use the role in the session. The JWT callback refreshes database role data on an update trigger or missing role, rather than every protected action. Immediate revocation of existing sessions after a role change or deactivation is not established by this code.
+
+Use synthetic products, orders and users for demonstrations. Remove customer names, contact details, credentials and invoice data from screenshots or logs before sharing. Owner-supplied project context describes this as an academic team project, with Krish credited for technical implementation. Source inspection does not independently verify individual authorship, the division of work, client outcomes or deployment status.
 
 ## Security Details
 
@@ -227,9 +248,9 @@ Orders totalling **Rs 15,000 or more** require admin confirmation before stock i
 
 1. Push to GitHub
 2. Import repo in [vercel.com](https://vercel.com)
-3. Add all environment variables from `.env.local.example`
+3. Add the environment variables listed in Installation and any optional-service variables you use
 4. Set `NEXTAUTH_URL` to your production URL
-5. Whitelist Vercel IPs in MongoDB Atlas Network Access (`0.0.0.0/0` for simplicity)
+5. Configure MongoDB Atlas Network Access for the deployment connection; review access restrictions before exposing real data
 6. Deploy
 
 ---
