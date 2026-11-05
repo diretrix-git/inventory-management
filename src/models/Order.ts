@@ -15,6 +15,8 @@ const orderLineSchema = new Schema(
 
 const orderSchema = new Schema<IOrder>(
   {
+    idempotencyKey: { type: String },
+    requestHash: { type: String },
     orderNumber: { type: String, required: true, unique: true },
     items: { type: [orderLineSchema], required: true },
     subtotal: { type: Number, required: true, min: 0 },
@@ -36,6 +38,10 @@ const orderSchema = new Schema<IOrder>(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
+orderSchema.index(
+  { createdBy: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
+);
 orderSchema.index({ status: 1 });
 orderSchema.index({ createdAt: 1 });
 orderSchema.index({ createdBy: 1 });

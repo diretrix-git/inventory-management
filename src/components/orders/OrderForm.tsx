@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
@@ -141,6 +141,7 @@ function ProductCard({
 // ─── OrderForm ────────────────────────────────────────────────────────────────
 
 export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
+  const submission = useRef<{ payload: string; key: string } | null>(null);
   const [allProducts, setAllProducts] = useState<ProductResult[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -235,20 +236,25 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       toast.error("Add at least one product to the order");
       return;
     }
+    const payload = JSON.stringify({
+      customerName: data.customerName.trim(),
+      customerEmail: data.customerEmail?.trim() || undefined,
+      notes: data.notes,
+      items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity })),
+    });
+    if (!submission.current || submission.current.payload !== payload) {
+      submission.current = { payload, key: crypto.randomUUID() };
+    }
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerName: data.customerName.trim(),
-          customerEmail: data.customerEmail?.trim() || undefined,
-          notes: data.notes,
-          items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity })),
-        }),
+        headers: { "Content-Type": "application/json", "Idempotency-Key": submission.current.key },
+        body: payload,
       });
       const json = await res.json();
       if (!res.ok) { toast.error(friendlyError(json.error)); return; }
 
+      submission.current = null;
       if (json.requiresApproval) {
         toast.warning(`Order submitted for admin approval — total ≥ Rs 15,000. Stock will be reserved once approved.`, { duration: 6000 });
       } else {
@@ -276,7 +282,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
+    <form onSubmit={(event) => { void handleSubmit(onSubmit)(event); }} noValidate className="flex flex-col gap-5">
       {/* Customer info */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
